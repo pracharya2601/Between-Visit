@@ -1,24 +1,30 @@
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import List
 
-from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI
-from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
 
-from models import COLLECTIONS, FOREIGN_KEYS, Client, Practice, Practitioner
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+from db import db, mongo
+from ingest import TEST_STREAM_ID, hash_key, install_log_filter
+from ingest import router as ingest_router
+from models import (
+    COLLECTIONS,
+    FOREIGN_KEYS,
+    Attempt,
+    Client,
+    Exercise,
+    Practice,
+    Practitioner,
+    Route,
+    TestConfig,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-mongo = AsyncIOMotorClient(os.environ["MONGO_URL"])
-db = mongo[os.environ["DB_NAME"]]
+install_log_filter()
 
 
 async def ensure_indexes():
@@ -27,6 +33,8 @@ async def ensure_indexes():
     for name, fields in FOREIGN_KEYS.items():
         for field in fields:
             await db[name].create_index(field)
+    await db.attempts.create_index("stream_id", unique=True)
+    await db.test_config.create_index("stream_id", unique=True)
 
 
 async def seed():
@@ -45,10 +53,27 @@ async def seed():
     logger.info("Seed inserted: 1 practice, 1 practitioner, 2 clients")
 
 
+async def seed_test_attempt():
+    if await db.attempts.find_one({"stream_id": TEST_STREAM_ID}):
+        logger.info("Test attempt seed skipped: already present")
+        return
+    client_a = Client.from_mongo(await db.clients.find_one({"display_name": "Client A (synthetic)"}, {"_id": 0}))
+    route = Route(practice_id=client_a.practice_id, name="Test route (synthetic)")
+    exercise = Exercise(route_id=route.id, client_id=client_a.id, goal="Device ingest test (synthetic)", cue_style="standard")
+    key = secrets.token_urlsafe(24)
+    attempt = Attempt(exercise_id=exercise.id, status="pending", stream_id=TEST_STREAM_ID, key_hash=hash_key(key))
+    await db.routes.insert_one(route.to_mongo())
+    await db.exercises.insert_one(exercise.to_mongo())
+    await db.attempts.insert_one(attempt.to_mongo())
+    await db.test_config.insert_one(TestConfig(stream_id=TEST_STREAM_ID, attempt_id=attempt.id, key=key).to_mongo())
+    logger.info("Test attempt seeded: 1 route, 1 exercise, 1 attempt")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_indexes()
     await seed()
+    await seed_test_attempt()
     yield
     mongo.close()
 
@@ -78,6 +103,7 @@ async def list_clients():
 
 
 app.include_router(api_router)
+app.include_router(ingest_router)
 
 app.add_middleware(
     CORSMiddleware,

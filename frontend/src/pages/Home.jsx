@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { Link } from "react-router-dom";
+import { API } from "@/lib/api";
 
 async function loadPracticeData() {
   const [practices, practitioners, clients] = await Promise.all(
@@ -34,6 +34,9 @@ function PracticeView({ data }) {
           ))}
         </ul>
       </section>
+      <p>
+        <Link to="/device-test" className="bv-link" data-testid="device-test-link">Open the device test page</Link>
+      </p>
     </div>
   );
 }

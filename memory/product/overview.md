@@ -17,10 +17,15 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-5 | Home page shows the practice, the practitioner and both clients (names only) | practitioner | 1 |
 | F-6 | Footer on every page with the exact disclaimer text | all | 1 |
 | F-7 | Accessibility: large text, high contrast, keyboard-friendly, ARIA labels | all | 1 |
-| F-8 | Routes, checkpoints, exercises, attempts, events, corrections: features come later | practitioner | later |
+| F-9 | Move stream_id + key from exercises to attempts (one per attempt); seed test attempt "att-test" for Client A | system | 2 |
+| F-10 | WebSocket device ingest /api/ws/ingest/{stream_id}?key= (frames counted then discarded, motion pairing, guide push, reconnect takeover) | device | 2 |
+| F-11 | Phone fallback POST /api/attempts/{id}/frame | device | 2 |
+| F-12 | /device-test page: server URL, stream ID + key with copy, Live status, counters, send test cue | practitioner | 2 |
+| F-8 | Routes, checkpoints, exercises, events, corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
+- Phase 2: Device ingest, no vision → F-9..F-12. [requirement](phase2/requirement.md) · [journeys](phase2/journeys.md)
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules
@@ -34,7 +39,8 @@ None in this phase. No auth.
 ## Edge Cases
 - Synthetic people only: clients.synthetic must be true; the model rejects false.
 - Never store frames from client runs. Only checkpoint photos of empty spaces (photo_url) are stored.
-- exercises.key is a private access code for the client's run link. Never returned by list endpoints. In a later phase, the practitioner sees it exactly once, at the moment of assigning an exercise.
+- (Phase 2) stream_id + key live on attempts, not exercises. The key is a private access code; it's never returned by list endpoints or written to logs. It's stored hashed. Only the seeded test attempt's key is shown, on /device-test. Later, the practitioner sees a new attempt's key exactly once, when it's created.
+- Frames are never stored: count, last time, last size, then discard.
 - Seeding is idempotent: restarting never creates duplicates.
 - Backend down or empty data → the home page shows "Couldn't load practice data".
 

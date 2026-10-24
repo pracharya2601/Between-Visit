@@ -70,25 +70,32 @@ class Checkpoint(BaseDocument):
     approved: bool = False
 
 
-class ExercisePublic(BaseDocument):
+class Exercise(BaseDocument):
     route_id: str
     client_id: str
     goal: str
     cue_style: Literal["minimal", "standard"]
     silence_rules: str = ""
     stop_rule: str = ""
-    stream_id: Optional[str] = None
 
 
-class Exercise(ExercisePublic):
-    key: str
-
-
-class Attempt(BaseDocument):
+class AttemptPublic(BaseDocument):
     exercise_id: str
     status: str
+    stream_id: str
     started_at: Optional[str] = None
     ended_at: Optional[str] = None
+
+
+class Attempt(AttemptPublic):
+    key_hash: str
+
+
+class TestConfig(BaseDocument):
+    # plain key of the seeded test attempt only, read solely by /device-test
+    stream_id: str
+    attempt_id: str
+    key: str
 
 
 class AttemptEvent(BaseDocument):
@@ -120,6 +127,7 @@ COLLECTIONS = {
     "attempts": Attempt,
     "attempt_events": AttemptEvent,
     "corrections": Correction,
+    "test_config": TestConfig,
 }
 
 FOREIGN_KEYS = {
@@ -130,6 +138,7 @@ FOREIGN_KEYS = {
     "checkpoints": ["route_id"],
     "exercises": ["route_id", "client_id"],
     "attempts": ["exercise_id"],
+    "test_config": ["attempt_id"],
     "attempt_events": ["attempt_id"],
     "corrections": ["attempt_event_id"],
 }

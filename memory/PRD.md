@@ -14,5 +14,12 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 ## Implemented (2026-10-24)
 - Phase 1, F-1..F-7. Sanity checks done: 4 endpoints curled, restart showed no duplicate seed, validation rejections checked, home page screenshot taken.
 
+## Phase 2 implemented (2026-10-24): device ingest, no vision
+- stream_id (unique) + key_hash (sha256, hmac.compare_digest) moved to attempts; exercises lost them. Seeded "Test route (synthetic)", one exercise for Client A, attempt "att-test"; plain test key only in `test_config`, read by GET /api/device-test/config.
+- backend/ingest.py: WS /api/ws/ingest/{stream_id}?key= (1008 on bad key/stream, {"viewers":0}, ≤1 MB frames counted + discarded, >1 MB dropped, motion pairing, takeover), POST /api/attempts/{id}/frame (phone fallback), GET /api/attempts/{id}/status, POST /api/attempts/{id}/cue (409 "Not connected", 422 on length). Log filter on uvicorn.access/error drops ingest paths and "key=".
+- Ingest counters are in memory and reset when the backend restarts.
+- Frontend /device-test page (copy fields, 1s status poll, cue form), linked from home.
+- Verified over the public wss:// URL with tests/wss_ingest_check.py.
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
