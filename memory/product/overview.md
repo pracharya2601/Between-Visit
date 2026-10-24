@@ -21,11 +21,18 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-10 | WebSocket device ingest /api/ws/ingest/{stream_id}?key= (frames counted then discarded, motion pairing, guide push, reconnect takeover) | device | 2 |
 | F-11 | Phone fallback POST /api/attempts/{id}/frame | device | 2 |
 | F-12 | /device-test page: server URL, stream ID + key with copy, Live status, counters, send test cue | practitioner | 2 |
-| F-8 | Routes, checkpoints, exercises, events, corrections UI: later | practitioner | later |
+| F-13 | Top navigation: Clients, Routes, Device test | practitioner | 3 |
+| F-14 | Clients list + read-only client page (name, notes) | practitioner | 3 |
+| F-15 | Routes list (name, # checkpoints, current version) + "New route" | practitioner | 3 |
+| F-16 | Phone-friendly route builder: name, ordered checkpoints (add/remove/up/down), photo (camera or upload, resized ~1280px, object storage), landmark text | practitioner | 3 |
+| F-17 | Claude Sonnet 5.5 vision landmark suggestion (≤25 words, "Suggested by AI"; person → retake, photo discarded) | practitioner | 3 |
+| F-18 | Per-checkpoint Approve; "Save route" only when all are approved → route_version N+1 snapshot | practitioner | 3 |
+| F-8 | Exercises, events, corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
 - Phase 2: Device ingest, no vision → F-9..F-12. [requirement](phase2/requirement.md) · [journeys](phase2/journeys.md)
+- Phase 3: Practitioner workspace + route builder → F-13..F-18. [requirement](phase3/requirement.md) · [journeys](phase3/journeys.md)
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules
@@ -34,7 +41,9 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Error state copy: "Couldn't load practice data".
 
 ## Integrations
-None in this phase. No auth.
+None in Phase 1. No auth.
+- Phase 2: none external.
+- Phase 3: Claude Sonnet 5.5 (vision) via the Emergent LLM key (emergentintegrations), for landmark suggestions. Emergent Object Storage for checkpoint photos.
 
 ## Edge Cases
 - Synthetic people only: clients.synthetic must be true; the model rejects false.

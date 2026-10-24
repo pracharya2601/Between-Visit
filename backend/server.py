@@ -10,6 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 from db import db, mongo
 from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
+from workspace import router as workspace_router
 from models import (
     COLLECTIONS,
     FOREIGN_KEYS,
@@ -35,6 +36,12 @@ async def ensure_indexes():
             await db[name].create_index(field)
     await db.attempts.create_index("stream_id", unique=True)
     await db.test_config.create_index("stream_id", unique=True)
+    await db.route_versions.create_index([("route_id", 1), ("version", 1)], unique=True)
+
+
+async def reset_unsaved_route_versions():
+    saved = await db.route_versions.distinct("route_id")
+    await db.routes.update_many({"id": {"$nin": saved}, "current_version": {"$ne": 0}}, {"$set": {"current_version": 0}})
 
 
 async def seed():
@@ -74,6 +81,7 @@ async def lifespan(_: FastAPI):
     await ensure_indexes()
     await seed()
     await seed_test_attempt()
+    await reset_unsaved_route_versions()
     yield
     mongo.close()
 
@@ -104,6 +112,7 @@ async def list_clients():
 
 app.include_router(api_router)
 app.include_router(ingest_router)
+app.include_router(workspace_router)
 
 app.add_middleware(
     CORSMiddleware,

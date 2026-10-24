@@ -49,25 +49,44 @@ class Client(BaseDocument):
 class Route(BaseDocument):
     practice_id: str
     name: str
-    current_version: int = 1
-
-
-class RouteVersion(BaseDocument):
-    route_id: str
-    version: int
-    checkpoints: List[str] = Field(default_factory=list)
-    known_entities: List[str] = Field(default_factory=list)
-    author: str
+    current_version: int = 0
 
 
 class Checkpoint(BaseDocument):
     # photo_url points to a photo of an empty space only; no client-run frames are stored
     route_id: str
     order: int
-    name: str
+    name: str = ""
     photo_url: Optional[str] = None
     landmark_text: str = ""
+    ai_suggested: bool = False
     approved: bool = False
+
+
+class CheckpointSnapshot(BaseModel):
+    id: str
+    order: int
+    name: str
+    photo_url: str
+    landmark_text: str
+
+
+class RouteVersion(BaseDocument):
+    route_id: str
+    version: int
+    checkpoints: List[CheckpointSnapshot] = Field(default_factory=list)
+    known_entities: List[str] = Field(default_factory=list)
+    author: str
+
+
+class Photo(BaseDocument):
+    # checkpoint photo of an empty space; bytes live in object storage, never in Mongo
+    checkpoint_id: str
+    storage_path: str
+    content_type: str = "image/jpeg"
+    width: int
+    height: int
+    size: int
 
 
 class Exercise(BaseDocument):
@@ -128,6 +147,7 @@ COLLECTIONS = {
     "attempt_events": AttemptEvent,
     "corrections": Correction,
     "test_config": TestConfig,
+    "photos": Photo,
 }
 
 FOREIGN_KEYS = {
@@ -139,6 +159,7 @@ FOREIGN_KEYS = {
     "exercises": ["route_id", "client_id"],
     "attempts": ["exercise_id"],
     "test_config": ["attempt_id"],
+    "photos": ["checkpoint_id"],
     "attempt_events": ["attempt_id"],
     "corrections": ["attempt_event_id"],
 }

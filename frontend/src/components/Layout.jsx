@@ -1,3 +1,7 @@
+import { Link, NavLink } from "react-router-dom";
+
+const NAV = [["/clients", "Clients"], ["/routes", "Routes"], ["/device-test", "Device test"]];
+
 export const FOOTER_TEXT =
   "Experimental practice tool used under the practitioner's direction. It doesn't replace the cane, the dog guide or the specialist, and it isn't a safety device.";
 
@@ -8,10 +12,19 @@ export default function Layout({ children }) {
         Skip to main content
       </a>
       <header className="bv-header" aria-label="Site header" data-testid="site-header">
-        <div className="bv-wrap">
-          <a href="/" className="bv-brand" data-testid="brand-home-link">
+        <div className="bv-wrap bv-header-row">
+          <Link to="/" className="bv-brand" data-testid="brand-home-link">
             Between Visit
-          </a>
+          </Link>
+          <nav aria-label="Main navigation" data-testid="top-nav">
+            <ul className="bv-nav">
+              {NAV.map(([to, label]) => (
+                <li key={to}>
+                  <NavLink to={to} className="bv-nav-link" data-testid={`nav-${label.toLowerCase().replace(" ", "-")}`}>{label}</NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="bv-main" aria-label="Main content" data-testid="main-content">

@@ -21,5 +21,14 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Frontend /device-test page (copy fields, 1s status poll, cue form), linked from home.
 - Verified over the public wss:// URL with tests/wss_ingest_check.py.
 
+## Phase 3 implemented (2026-10-24): practitioner workspace + route builder
+- Top nav (Clients, Routes, Device test; NavLink aria-current). Clients list + read-only client page ("Client not found"). Routes list (count, version / "Not saved yet") + New route.
+- backend/workspace.py: route/checkpoint CRUD (add/remove/move/rename/patch), approve, photo pipeline, photo proxy GET /api/photos/{id}, save → immutable route_version (unique route_id+version), versions list.
+- backend/vision.py: Pillow resize to 1280px wide (no upscale), EXIF/GPS stripped; Claude Sonnet 5.5 (`claude-sonnet-5-5`, Emergent LLM key) with 30s timeout; person → retake, photo discarded; ≤25 words.
+- backend/storage.py: Emergent Object Storage; `photos` collection keeps storage_path (never exposed).
+- Unsaved routes reset to current_version 0 on startup.
+- Frontend: Clients, ClientDetail, Routes, RouteBuilder, CheckpointCard, PhotoPicker; drafts saved (debounced 500 ms).
+- Checks: tests/route_builder_check.py (real Claude calls, resize, v1/v2), tests/wss_ingest_check.py re-run OK.
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
