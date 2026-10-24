@@ -80,7 +80,7 @@ async def get_client(client_id: str):
 
 @router.get("/routes", response_model=List[RouteSummary])
 async def list_routes():
-    routes = [Route.from_mongo(d) for d in await db.routes.find({"is_test": {"$ne": True}}, {"_id": 0}).sort("created_at", 1).to_list(1000)]
+    routes = [Route.from_mongo(d) for d in await db.routes.find({"is_test": {"$ne": True}, "teach_pending": {"$ne": True}}, {"_id": 0}).sort("created_at", 1).to_list(1000)]
     return [
         RouteSummary(**r.model_dump(), checkpoint_count=await db.checkpoints.count_documents({"route_id": r.id}))
         for r in routes
@@ -172,18 +172,25 @@ async def upload_photo(checkpoint_id: str, file: UploadFile = File(...)):
     status, text = await suggest_landmark(jpeg)
     if status == "retake":
         return PhotoResult(ai_status="retake", message=RETAKE, checkpoint=cp)
-    photo = Photo(checkpoint_id=cp.id, storage_path="", width=width, height=height, size=len(jpeg))
     try:
-        stored = await put_object(f"checkpoints/{photo.id}.jpg", jpeg, "image/jpeg")
+        updated = await attach_photo(cp.id, jpeg, width, height, status, text)
     except Exception:
         raise HTTPException(status_code=502, detail="Couldn't store the photo. Try again.")
+    message = "Suggested by AI" if status == "suggested" else "AI suggestion unavailable"
+    return PhotoResult(ai_status=status, message=message, checkpoint=updated)
+
+
+async def attach_photo(cp_id: str, jpeg: bytes, width: int, height: int, status: str, text: Optional[str]) -> Checkpoint:
+    """Stores an accepted (person-free) checkpoint photo and sets the AI text; used by upload and teach walks."""
+    cp = await get_checkpoint(cp_id)
+    photo = Photo(checkpoint_id=cp_id, route_id=cp.route_id, storage_path="", width=width, height=height, size=len(jpeg))
+    stored = await put_object(f"checkpoints/{photo.id}.jpg", jpeg, "image/jpeg")
     photo.storage_path = stored["path"]
     await db.photos.insert_one(photo.to_mongo())
-    changes = {"photo_url": f"/api/photos/{photo.id}", "approved": False}
+    changes = {"photo_url": f"/api/photos/{photo.id}", "approved": False, "needs_photo": False, "photo_pending": False, "ai_unavailable": status != "suggested"}
     if status == "suggested":
         changes.update(landmark_text=text, ai_suggested=True)
-    message = "Suggested by AI" if status == "suggested" else "AI suggestion unavailable"
-    return PhotoResult(ai_status=status, message=message, checkpoint=await set_checkpoint(cp.id, changes))
+    return await set_checkpoint(cp_id, changes)
 
 
 @router.get("/photos/{photo_id}")
@@ -206,14 +213,20 @@ async def save_route(route_id: str):
         raise HTTPException(status_code=422, detail="Add at least one checkpoint")
     if not all(c.approved for c in cps):
         raise HTTPException(status_code=422, detail="Approve every checkpoint")
+    prev = await db.route_versions.find_one({"route_id": route_id}, {"_id": 0, "memory_id": 1}, sort=[("version", -1)])
+    return await create_version(route, cps, (prev or {}).get("memory_id"))
+
+
+async def create_version(route: Route, cps: List[Checkpoint], memory_id: Optional[str]) -> RouteVersion:
     version = RouteVersion(
-        route_id=route_id,
+        route_id=route.id,
         version=route.current_version + 1,
         checkpoints=[CheckpointSnapshot(id=c.id, order=c.order, name=c.name, photo_url=c.photo_url, landmark_text=c.landmark_text) for c in cps],
         author=AUTHOR,
+        memory_id=memory_id,
     )
     await db.route_versions.insert_one(version.to_mongo())
-    await db.routes.update_one({"id": route_id}, {"$set": {"current_version": version.version}})
+    await db.routes.update_one({"id": route.id}, {"$set": {"current_version": version.version}})
     return version
 
 

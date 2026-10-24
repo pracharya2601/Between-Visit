@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import secrets
@@ -14,6 +15,8 @@ from workspace import router as workspace_router
 from exercises import router as exercises_router
 from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup
 from run import router as run_router
+from teach import expire_idle_sessions
+from teach import router as teach_router
 from models import (
     COLLECTIONS,
     FOREIGN_KEYS,
@@ -39,6 +42,7 @@ async def ensure_indexes():
             await db[name].create_index(field)
     await db.attempts.create_index("stream_id", unique=True)
     await db.test_config.create_index("stream_id", unique=True)
+    await db.teach_sessions.create_index("stream_id", unique=True)
     await db.route_versions.create_index([("route_id", 1), ("version", 1)], unique=True)
     await db.attempt_events.create_index([("attempt_id", 1), ("type", 1), ("seq", 1)])
 
@@ -90,7 +94,9 @@ async def lifespan(_: FastAPI):
     await phase4_cleanup()
     await phase5_cleanup()
     await phase6_cleanup()
+    expiry = asyncio.create_task(expire_idle_sessions())
     yield
+    expiry.cancel()
     mongo.close()
 
 
@@ -123,6 +129,7 @@ app.include_router(ingest_router)
 app.include_router(workspace_router)
 app.include_router(exercises_router)
 app.include_router(run_router)
+app.include_router(teach_router)
 
 app.add_middleware(
     CORSMiddleware,

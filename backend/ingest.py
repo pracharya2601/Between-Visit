@@ -168,6 +168,9 @@ async def take_over(state: StreamState, ws: WebSocket):
 @router.websocket("/ws/ingest/{stream_id}")
 async def ingest(ws: WebSocket, stream_id: str):
     await ws.accept()
+    if stream_id.startswith("tch-"):
+        import teach
+        return await teach.ingest_teach(ws, stream_id)
     attempt = await find_attempt(stream_id=stream_id)
     if not attempt or not key_matches(ws.query_params.get("key"), attempt.key_hash):
         await ws.close(code=1008)
@@ -193,6 +196,8 @@ async def ingest(ws: WebSocket, stream_id: str):
             obj = parse_json(msg.get("text") or "")
             if obj.get("type") == "phone":
                 sensors.on_phone_line(attempt.id, obj)
+                import teach
+                await teach.attempt_trail(attempt.id, obj)
                 continue
             motion = parse_motion(obj)
             if motion:

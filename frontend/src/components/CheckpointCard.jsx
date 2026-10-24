@@ -73,6 +73,9 @@ export default function CheckpointCard({ cp, index, total, onChange, onMove, onR
         <legend className="bv-cp-legend">
           <span data-testid={`${p}-number`}>Checkpoint {n}</span>
           <span className={`bv-tag ${approved ? "bv-tag-ok" : ""}`} data-testid={`${p}-approval-state`}>{approved ? "Approved" : "Not approved"}</span>
+          {cp.photo_pending && <span className="bv-tag" data-testid={`${p}-photo-pending`}>Finding a photo…</span>}
+          {cp.needs_photo && <span className="bv-tag bv-tag-warn" data-testid={`${p}-needs-photo`}>Needs photo</span>}
+          {cp.ai_unavailable && cp.photo_url && !cp.landmark_text && <span className="bv-tag" data-testid={`${p}-ai-unavailable`}>AI suggestion unavailable</span>}
         </legend>
         <div className="bv-field">
           <label htmlFor={`${p}-name`} className="bv-label">Checkpoint name</label>

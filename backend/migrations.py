@@ -14,7 +14,7 @@ TEST_ROUTE = "Test route (synthetic)"
 async def delete_routes_cascade(route_ids: list) -> dict:
     """Deletes routes with checkpoints, versions, exercises, attempts and events; photos become unservable."""
     cp_ids = await db.checkpoints.distinct("id", {"route_id": {"$in": route_ids}})
-    photos = await db.photos.find({"checkpoint_id": {"$in": cp_ids}, "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "storage_path": 1}).to_list(10000)
+    photos = await db.photos.find({"$or": [{"checkpoint_id": {"$in": cp_ids}}, {"route_id": {"$in": route_ids}}], "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "storage_path": 1}).to_list(10000)
     deleted_in_storage = 0
     for p in photos:
         ok = await delete_object(p["storage_path"])

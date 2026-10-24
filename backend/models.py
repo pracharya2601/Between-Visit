@@ -52,6 +52,7 @@ class Route(BaseDocument):
     name: str
     current_version: int = 0
     is_test: bool = False
+    teach_pending: bool = False
 
 
 class Checkpoint(BaseDocument):
@@ -63,6 +64,10 @@ class Checkpoint(BaseDocument):
     landmark_text: str = ""
     ai_suggested: bool = False
     approved: bool = False
+    needs_photo: bool = False
+    photo_pending: bool = False
+    ai_unavailable: bool = False
+    position: Optional[List[float]] = None
 
 
 class CheckpointSnapshot(BaseModel):
@@ -79,11 +84,35 @@ class RouteVersion(BaseDocument):
     checkpoints: List[CheckpointSnapshot] = Field(default_factory=list)
     known_entities: List[str] = Field(default_factory=list)
     author: str
+    memory_id: Optional[str] = None
+
+
+class TeachSession(BaseDocument):
+    route_name: str
+    route_id: str
+    stream_id: str
+    key_hash: str
+    key: Optional[str] = None
+    status: Literal["active", "finished", "cancelled", "expired"] = "active"
+    saved: bool = False
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class RouteMemory(BaseDocument):
+    # 3D memory of a taught walk; arrays live in object storage, practitioner-only
+    route_id: str
+    teach_session_id: str
+    points_path: str
+    json_path: str
+    point_count: int
+    plane_count: int
+    trail_m: float
 
 
 class Photo(BaseDocument):
     # checkpoint photo of an empty space; bytes live in object storage, never in Mongo
     checkpoint_id: str
+    route_id: Optional[str] = None
     storage_path: str
     content_type: str = "image/jpeg"
     width: int
@@ -183,6 +212,8 @@ COLLECTIONS = {
     "corrections": Correction,
     "test_config": TestConfig,
     "photos": Photo,
+    "teach_sessions": TeachSession,
+    "route_memories": RouteMemory,
 }
 
 FOREIGN_KEYS = {
@@ -195,6 +226,8 @@ FOREIGN_KEYS = {
     "attempts": ["exercise_id"],
     "test_config": ["attempt_id"],
     "photos": ["checkpoint_id"],
+    "teach_sessions": ["route_id"],
+    "route_memories": ["route_id"],
     "attempt_events": ["attempt_id"],
     "corrections": ["attempt_event_id"],
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
+import TeachStartForm from "@/components/teach/TeachStartForm";
 
 export default function RoutesPage() {
   const { status, data } = useApi(`${API}/routes`);
@@ -39,6 +40,7 @@ export default function RoutesPage() {
           <button type="submit" className="bv-btn bv-btn-primary bv-btn-inline" disabled={creating} data-testid="new-route-button">Create route</button>
         </div>
       </form>
+      <TeachStartForm />
       <div aria-live="polite" role="status" data-testid="routes-status">
         {status === "loading" && <p>Loading routes…</p>}
         {status === "error" && <p className="bv-error">Couldn't load practice data</p>}

@@ -9,6 +9,8 @@ import RoutesPage from "@/pages/Routes";
 import RouteBuilder from "@/pages/RouteBuilder";
 import AssignExercise from "@/pages/AssignExercise";
 import ClientRun from "@/pages/ClientRun";
+import TeachWalk from "@/pages/TeachWalk";
+import TeachReview from "@/pages/TeachReview";
 
 function Workspace() {
   return (
@@ -21,6 +23,8 @@ function Workspace() {
         <Route path="/routes" element={<RoutesPage />} />
         <Route path="/routes/:id" element={<RouteBuilder />} />
         <Route path="/routes/:id/assign" element={<AssignExercise />} />
+        <Route path="/teach/:id" element={<TeachWalk />} />
+        <Route path="/teach/:id/review" element={<TeachReview />} />
       </Routes>
     </Layout>
   );

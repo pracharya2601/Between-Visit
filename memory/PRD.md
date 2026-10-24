@@ -63,5 +63,13 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - /device-test status shows pose, heading, tracking, LiDAR, depth L/C/R and the depth counters. The run API has no pose/depth.
 - Check: tests/depth_check.py (with run_check_data.py setup/cleanup).
 
+## Phase 8 implemented (2026-10-24): teach a route by walking
+- backend/teach.py: teach_sessions ("tch-xxxx", key hash; plain key only while active, erased on finish/cancel/expiry), the same /api/ws/ingest socket (tch- prefix), a hidden draft route (teach_pending) whose checkpoints reuse the Phase 3 endpoints. Points: every 8th pixel → world via column-major ar_pose, 5 cm voxel dedupe, 200k cap, tracking "normal" only. Planes replaced per ar_planes set (malformed skipped). Trail every 0.25 m; turn detection >45° over 2 m windows, 2 m skip; Start/Turn N/End. 3 s JPEG ring, photo pick waits ~1 s, then nearest-first (up to 5 candidates) with the Sonnet person check; all people → "Needs photo". Save → RouteMemory (points.f32 + memory.json in storage) referenced by route_version.memory_id; builder saves copy memory_id. Idle expiry 2 h (background task). Client runs: practitioner-only trail on attempts (GET /api/attempts/{id}/trail).
+- sensors.py: parse_depth/summarise_array; lines keep pose + tracking for pairing.
+- Photos now carry route_id so route cascade deletes catch photos of removed checkpoints.
+- Frontend: TeachStartForm (Routes), TeachWalk (/teach/:id), TeachReview (/teach/:id/review) with lazy Scene3D (r3f + drei, height colours, plane styles, trail, sprite markers, aria-label summary) + CheckpointCard list; lib/saveBlocker.js.
+- In-memory map is lost on a backend restart (checkpoints survive in the DB).
+- Check: tests/teach_walk_sim.py walk|save|cleanup.
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
