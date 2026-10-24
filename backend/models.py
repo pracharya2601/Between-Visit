@@ -1,0 +1,135 @@
+import uuid
+from datetime import datetime, timezone
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class BaseDocument(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(default_factory=new_id)
+    created_at: str = Field(default_factory=now_iso)
+
+    def to_mongo(self) -> dict:
+        return self.model_dump()
+
+    @classmethod
+    def from_mongo(cls, doc: dict):
+        doc = dict(doc)
+        doc.pop("_id", None)
+        return cls(**doc)
+
+
+class Practice(BaseDocument):
+    name: str
+
+
+class Practitioner(BaseDocument):
+    practice_id: str
+    name: str
+    role: str
+
+
+class Client(BaseDocument):
+    practice_id: str
+    display_name: str
+    notes: str = ""
+    synthetic: Literal[True]
+
+
+class Route(BaseDocument):
+    practice_id: str
+    name: str
+    current_version: int = 1
+
+
+class RouteVersion(BaseDocument):
+    route_id: str
+    version: int
+    checkpoints: List[str] = Field(default_factory=list)
+    known_entities: List[str] = Field(default_factory=list)
+    author: str
+
+
+class Checkpoint(BaseDocument):
+    # photo_url points to a photo of an empty space only; no client-run frames are stored
+    route_id: str
+    order: int
+    name: str
+    photo_url: Optional[str] = None
+    landmark_text: str = ""
+    approved: bool = False
+
+
+class ExercisePublic(BaseDocument):
+    route_id: str
+    client_id: str
+    goal: str
+    cue_style: Literal["minimal", "standard"]
+    silence_rules: str = ""
+    stop_rule: str = ""
+    stream_id: Optional[str] = None
+
+
+class Exercise(ExercisePublic):
+    key: str
+
+
+class Attempt(BaseDocument):
+    exercise_id: str
+    status: str
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+
+
+class AttemptEvent(BaseDocument):
+    attempt_id: str
+    t: float
+    type: str
+    text: str = ""
+    spoken: bool = False
+    suppressed_reason: Optional[str] = None
+    checkpoint: Optional[str] = None
+    uncertain: bool = False
+
+
+class Correction(BaseDocument):
+    attempt_event_id: str
+    action: Literal["confirm", "edit", "dismiss"]
+    author: str
+    new_route_version: Optional[int] = None
+
+
+COLLECTIONS = {
+    "practices": Practice,
+    "practitioners": Practitioner,
+    "clients": Client,
+    "routes": Route,
+    "route_versions": RouteVersion,
+    "checkpoints": Checkpoint,
+    "exercises": Exercise,
+    "attempts": Attempt,
+    "attempt_events": AttemptEvent,
+    "corrections": Correction,
+}
+
+FOREIGN_KEYS = {
+    "practitioners": ["practice_id"],
+    "clients": ["practice_id"],
+    "routes": ["practice_id"],
+    "route_versions": ["route_id"],
+    "checkpoints": ["route_id"],
+    "exercises": ["route_id", "client_id"],
+    "attempts": ["exercise_id"],
+    "attempt_events": ["attempt_id"],
+    "corrections": ["attempt_event_id"],
+}
