@@ -111,6 +111,21 @@ a, button, [tabindex] { outline: none; }
 .bv-cp-msg { min-height: 1.6em; margin: 0.75rem 0 0 !important; font-weight: 700; }
 textarea.bv-input { resize: vertical; }
 .bv-btn-primary:disabled { margin-top: 1.25rem; }
+.bv-btn-link { display: inline-flex; align-items: center; text-decoration: none; }
+.bv-fieldset { border: 0; margin: 1.25rem 0 0; padding: 0; min-width: 0; }
+.bv-choice { display: flex; align-items: flex-start; gap: 0.75rem; min-height: 2.75rem; padding: 0.4rem 0; cursor: pointer; }
+.bv-choice input { width: 1.5rem; height: 1.5rem; margin-top: 0.15rem; flex: none; accent-color: var(--bv-accent); }
+.bv-label-spaced { margin-top: 1rem; }
+.bv-field-error { margin: 0.4rem 0 0 !important; min-height: 0; }
+.bv-input[aria-invalid="true"] { border-color: var(--bv-error); border-width: 3px; }
+.bv-warning { border: 3px solid var(--bv-ink); background: #fff3c4; color: var(--bv-ink); font-weight: 700; padding: 0.75rem 1rem; margin: 0 0 1.25rem !important; }
+.bv-confirm { margin-top: 1rem; }
+.bv-confirm .bv-h2:focus { outline-offset: 4px; }
+.bv-ex-goal { margin: 0 0 0.25rem; }
+.bv-btn-spaced { margin-top: 1rem; }
+.bv-run { font-size: 1.15rem; }
+.bv-run-dl { grid-template-columns: minmax(7rem, max-content) 1fr; }
+@media (max-width: 40rem) { .bv-run-dl { grid-template-columns: 1fr; } }
 
 .bv-footer { border-top: 3px solid var(--bv-line); padding: 1.5rem 0; background: var(--bv-panel); }
 .bv-footer p { margin: 0; font-size: 1rem; }

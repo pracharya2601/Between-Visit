@@ -50,6 +50,7 @@ class Route(BaseDocument):
     practice_id: str
     name: str
     current_version: int = 0
+    is_test: bool = False
 
 
 class Checkpoint(BaseDocument):
@@ -87,14 +88,23 @@ class Photo(BaseDocument):
     width: int
     height: int
     size: int
+    is_deleted: bool = False
+    storage_deleted: Optional[bool] = None
+
+
+class SilenceRules(BaseModel):
+    stay_silent_on_route: bool = True
+    no_repeat: bool = True
+    note: Optional[str] = None
 
 
 class Exercise(BaseDocument):
     route_id: str
+    route_version: int
     client_id: str
     goal: str
     cue_style: Literal["minimal", "standard"]
-    silence_rules: str = ""
+    silence_rules: SilenceRules = Field(default_factory=SilenceRules)
     stop_rule: str = ""
 
 

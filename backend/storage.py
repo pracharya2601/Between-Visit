@@ -37,6 +37,18 @@ def _get(path: str) -> bytes:
     return _request("GET", path, timeout=60).content
 
 
+def _delete(path: str) -> bool:
+    try:
+        resp = requests.delete(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": _init_storage()}, timeout=30)
+        return resp.ok
+    except requests.RequestException:
+        return False
+
+
+async def delete_object(storage_path: str) -> bool:
+    return await asyncio.to_thread(_delete, storage_path)
+
+
 async def put_object(path: str, data: bytes, content_type: str) -> dict:
     return await asyncio.to_thread(_put, f"{APP_NAME}/{path}", data, content_type)
 

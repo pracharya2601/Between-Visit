@@ -11,6 +11,8 @@ from db import db, mongo
 from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
+from exercises import router as exercises_router
+from migrations import phase4_cleanup, phase4_model_updates
 from models import (
     COLLECTIONS,
     FOREIGN_KEYS,
@@ -65,8 +67,8 @@ async def seed_test_attempt():
         logger.info("Test attempt seed skipped: already present")
         return
     client_a = Client.from_mongo(await db.clients.find_one({"display_name": "Client A (synthetic)"}, {"_id": 0}))
-    route = Route(practice_id=client_a.practice_id, name="Test route (synthetic)")
-    exercise = Exercise(route_id=route.id, client_id=client_a.id, goal="Device ingest test (synthetic)", cue_style="standard")
+    route = Route(practice_id=client_a.practice_id, name="Test route (synthetic)", is_test=True)
+    exercise = Exercise(route_id=route.id, route_version=0, client_id=client_a.id, goal="Device ingest test (synthetic)", cue_style="standard")
     key = secrets.token_urlsafe(24)
     attempt = Attempt(exercise_id=exercise.id, status="pending", stream_id=TEST_STREAM_ID, key_hash=hash_key(key))
     await db.routes.insert_one(route.to_mongo())
@@ -82,6 +84,8 @@ async def lifespan(_: FastAPI):
     await seed()
     await seed_test_attempt()
     await reset_unsaved_route_versions()
+    await phase4_model_updates()
+    await phase4_cleanup()
     yield
     mongo.close()
 
@@ -113,6 +117,7 @@ async def list_clients():
 app.include_router(api_router)
 app.include_router(ingest_router)
 app.include_router(workspace_router)
+app.include_router(exercises_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -5,7 +5,7 @@ const NAV = [["/clients", "Clients"], ["/routes", "Routes"], ["/device-test", "D
 export const FOOTER_TEXT =
   "Experimental practice tool used under the practitioner's direction. It doesn't replace the cane, the dog guide or the specialist, and it isn't a safety device.";
 
-export default function Layout({ children }) {
+export default function Layout({ children, nav = true }) {
   return (
     <div className="bv-shell">
       <a href="#main-content" className="bv-skip" data-testid="skip-to-content-link">
@@ -13,10 +13,12 @@ export default function Layout({ children }) {
       </a>
       <header className="bv-header" aria-label="Site header" data-testid="site-header">
         <div className="bv-wrap bv-header-row">
-          <Link to="/" className="bv-brand" data-testid="brand-home-link">
-            Between Visit
-          </Link>
-          <nav aria-label="Main navigation" data-testid="top-nav">
+          {nav ? (
+            <Link to="/" className="bv-brand" data-testid="brand-home-link">Between Visit</Link>
+          ) : (
+            <span className="bv-brand" data-testid="brand-name">Between Visit</span>
+          )}
+          {nav && <nav aria-label="Main navigation" data-testid="top-nav">
             <ul className="bv-nav">
               {NAV.map(([to, label]) => (
                 <li key={to}>
@@ -24,7 +26,7 @@ export default function Layout({ children }) {
                 </li>
               ))}
             </ul>
-          </nav>
+          </nav>}
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="bv-main" aria-label="Main content" data-testid="main-content">

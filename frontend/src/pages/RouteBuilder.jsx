@@ -88,6 +88,9 @@ export default function RouteBuilder() {
           Route builder · {route.current_version > 0 ? `Version ${route.current_version}` : "Not saved yet"}
         </p>
         <h1 id="builder-heading" className="bv-h1">{name || "New route"}</h1>
+        {route.current_version >= 1 && (
+          <Link to={`/routes/${id}/assign`} className="bv-btn bv-btn-primary bv-btn-link" data-testid="assign-exercise-button">Assign exercise</Link>
+        )}
       </section>
       <div className="bv-field">
         <label htmlFor="route-name" className="bv-label">Route name</label>

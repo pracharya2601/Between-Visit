@@ -7,20 +7,32 @@ import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
 import RoutesPage from "@/pages/Routes";
 import RouteBuilder from "@/pages/RouteBuilder";
+import AssignExercise from "@/pages/AssignExercise";
+import RunPage from "@/pages/RunPage";
+
+function Workspace() {
+  return (
+    <Layout>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/device-test" element={<DeviceTest />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/clients/:id" element={<ClientDetail />} />
+        <Route path="/routes" element={<RoutesPage />} />
+        <Route path="/routes/:id" element={<RouteBuilder />} />
+        <Route path="/routes/:id/assign" element={<AssignExercise />} />
+      </Routes>
+    </Layout>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/device-test" element={<DeviceTest />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/:id" element={<ClientDetail />} />
-          <Route path="/routes" element={<RoutesPage />} />
-          <Route path="/routes/:id" element={<RouteBuilder />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/run/:id" element={<Layout nav={false}><RunPage /></Layout>} />
+        <Route path="*" element={<Workspace />} />
+      </Routes>
     </BrowserRouter>
   );
 }

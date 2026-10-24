@@ -30,5 +30,13 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Frontend: Clients, ClientDetail, Routes, RouteBuilder, CheckpointCard, PhotoPicker; drafts saved (debounced 500 ms).
 - Checks: tests/route_builder_check.py (real Claude calls, resize, v1/v2), tests/wss_ingest_check.py re-run OK.
 
+## Phase 4 implemented (2026-10-24): exercise builder + assignment
+- Cleanup (backend/migrations.py, runs once, recorded in `migrations`): deleted "Check route" + "Library entrance" routes, 6 checkpoints, 2 route_versions. Object storage has NO delete (DELETE → 405), so the 3 photos are flagged is_deleted and the proxy returns 404; the bytes remain in storage.
+- Test route flagged is_test: hidden from Routes, 404 in the workspace API, not assignable. att-test unchanged.
+- Exercises: route_version (pinned) + silence_rules {stay_silent_on_route, no_repeat, note}. Attempts: "att-" + 4 chars (unique, retried), key hash only, status not_started.
+- backend/exercises.py: POST /api/routes/{id}/exercises (exercise + first attempt; the exercise is deleted if the attempt fails, since there are no Mongo transactions on a standalone server), POST /api/exercises/{id}/attempts, GET /api/clients/{id}/exercises, GET /api/run/{id}, POST /api/run/{id}/verify (key in body).
+- Frontend: AssignExercise page + AssignForm, OneTimeConfirmation (run link with #key, stream ID, key, copy, shown-once warning), ExerciseList on client page with New attempt, /run/:id page without nav.
+- Demo data: "Reception route (synthetic)" (v2, exercise pinned to v1 for Client A, 2 attempts), "Unsaved draft (synthetic)".
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.

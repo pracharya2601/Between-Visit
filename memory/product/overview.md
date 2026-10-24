@@ -27,12 +27,18 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-16 | Phone-friendly route builder: name, ordered checkpoints (add/remove/up/down), photo (camera or upload, resized ~1280px, object storage), landmark text | practitioner | 3 |
 | F-17 | Claude Sonnet 5.5 vision landmark suggestion (≤25 words, "Suggested by AI"; person → retake, photo discarded) | practitioner | 3 |
 | F-18 | Per-checkpoint Approve; "Save route" only when all are approved → route_version N+1 snapshot | practitioner | 3 |
-| F-8 | Exercises, events, corrections UI: later | practitioner | later |
+| F-19 | Cleanup: delete the 2 check routes and their photos; hide the test route from Routes | system | 4 |
+| F-20 | "Assign exercise" on saved routes: client, goal, cue style, silence rules, stop rule → exercise pinned to version + first attempt | practitioner | 4 |
+| F-21 | One-time confirmation: run link (/run/{id}#key=…), stream ID, key, copy buttons | practitioner | 4 |
+| F-22 | Client page: exercises with attempts, plus "New attempt" | practitioner | 4 |
+| F-23 | /run/{attempt id} placeholder: goal, stream ID, key from the link | client | 4 |
+| F-8 | Attempt events, corrections, review UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
 - Phase 2: Device ingest, no vision → F-9..F-12. [requirement](phase2/requirement.md) · [journeys](phase2/journeys.md)
 - Phase 3: Practitioner workspace + route builder → F-13..F-18. [requirement](phase3/requirement.md) · [journeys](phase3/journeys.md)
+- Phase 4: Exercise builder + assignment → F-19..F-23. [requirement](phase4/requirement.md) · [journeys](phase4/journeys.md)
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules
@@ -50,6 +56,7 @@ None in Phase 1. No auth.
 - Never store frames from client runs. Only checkpoint photos of empty spaces (photo_url) are stored.
 - (Phase 2) stream_id + key live on attempts, not exercises. The key is a private access code; it's never returned by list endpoints or written to logs. It's stored hashed. Only the seeded test attempt's key is shown, on /device-test. Later, the practitioner sees a new attempt's key exactly once, when it's created.
 - Frames are never stored: count, last time, last size, then discard.
+- (Phase 4) A new attempt's key is shown once in the assignment/new-attempt confirmation. It travels only in the run link's URL fragment (/run/{id}#key=…), which never reaches the server. The server keeps only the hash. If the key is lost, make a new attempt.
 - Seeding is idempotent: restarting never creates duplicates.
 - Backend down or empty data → the home page shows "Couldn't load practice data".
 

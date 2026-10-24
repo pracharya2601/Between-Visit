@@ -41,7 +41,7 @@ class PhotoResult(BaseModel):
 
 
 async def get_route(route_id: str) -> Route:
-    doc = await db.routes.find_one({"id": route_id}, {"_id": 0})
+    doc = await db.routes.find_one({"id": route_id, "is_test": {"$ne": True}}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Route not found")
     return Route.from_mongo(doc)
@@ -80,7 +80,7 @@ async def get_client(client_id: str):
 
 @router.get("/routes", response_model=List[RouteSummary])
 async def list_routes():
-    routes = [Route.from_mongo(d) for d in await db.routes.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)]
+    routes = [Route.from_mongo(d) for d in await db.routes.find({"is_test": {"$ne": True}}, {"_id": 0}).sort("created_at", 1).to_list(1000)]
     return [
         RouteSummary(**r.model_dump(), checkpoint_count=await db.checkpoints.count_documents({"route_id": r.id}))
         for r in routes
@@ -188,7 +188,7 @@ async def upload_photo(checkpoint_id: str, file: UploadFile = File(...)):
 
 @router.get("/photos/{photo_id}")
 async def serve_photo(photo_id: str):
-    doc = await db.photos.find_one({"id": photo_id}, {"_id": 0})
+    doc = await db.photos.find_one({"id": photo_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Photo not found")
     photo = Photo.from_mongo(doc)

@@ -1,10 +1,12 @@
 import { Link, useParams } from "react-router-dom";
 import { API } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
+import ExerciseList from "@/components/ExerciseList";
 
 export default function ClientDetail() {
   const { id } = useParams();
   const { status, data, code } = useApi(`${API}/clients/${id}`);
+  const exercises = useApi(`${API}/clients/${id}/exercises`);
   return (
     <div className="bv-stack">
       <p><Link to="/clients" className="bv-link" data-testid="back-to-clients-link">Back to clients</Link></p>
@@ -24,6 +26,8 @@ export default function ClientDetail() {
             <h2 id="notes-heading" className="bv-h2">Notes</h2>
             <p data-testid="client-notes">{data.notes || "No notes"}</p>
           </section>
+          {exercises.status === "ready" && <ExerciseList exercises={exercises.data} />}
+          {exercises.status === "error" && <p className="bv-error" role="status">Couldn't load exercises</p>}
         </>
       )}
     </div>
