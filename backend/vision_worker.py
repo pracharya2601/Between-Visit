@@ -55,6 +55,7 @@ class Slot:
     last_start: float = 0.0
     task: Optional[asyncio.Task] = None
     stopped: bool = False
+    injected: bool = False
 
 
 SLOTS: dict = {}
@@ -63,7 +64,7 @@ SLOTS: dict = {}
 def offer(attempt_id: str, frame: bytes, source: str):
     """Keeps only the newest frame; frames arriving during a call are discarded (no queue)."""
     slot = SLOTS.setdefault(attempt_id, Slot())
-    if slot.in_flight or slot.stopped:
+    if slot.in_flight or slot.stopped or slot.injected:
         return
     slot.frame, slot.source = frame, source
     if slot.task is None:
@@ -167,8 +168,19 @@ def parse_reply(reply: str, names: List[str]) -> Optional[VisionResult]:
     return result
 
 
-async def log(attempt_id: str, type_: str, **fields):
-    await db.attempt_events.insert_one(AttemptEvent(attempt_id=attempt_id, type=type_, **fields).to_mongo())
+async def log(attempt_id: str, type_: str, **fields) -> dict:
+    doc = AttemptEvent(attempt_id=attempt_id, type=type_, **fields).to_mongo()
+    await db.attempt_events.insert_one(dict(doc))
+    return doc
+
+
+async def log_and_cue(attempt_id: str, type_: str, snap: Optional[dict] = None, **fields):
+    """Logs a vision/vision_error/vision_stopped event only if still running, then runs the relevance policy on it."""
+    import cue_runner
+    doc = await db.attempts.find_one({"id": attempt_id}, {"_id": 0, "status": 1})
+    if not doc or doc["status"] != "running":
+        return
+    await cue_runner.handle(attempt_id, await log(attempt_id, type_, **fields), snap)
 
 
 async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = TIMEOUT_S):
@@ -181,7 +193,7 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     if attempt.elapsed_seconds() > TIME_LIMIT_S:
         SLOTS.setdefault(attempt_id, Slot()).stopped = True
         if not await db.attempt_events.find_one({"attempt_id": attempt_id, "type": "vision_stopped"}):
-            await log(attempt_id, "vision_stopped", reason="time_limit")
+            await log_and_cue(attempt_id, "vision_stopped", reason="time_limit")
         return
     ex = await db.exercises.find_one({"id": attempt.exercise_id}, {"_id": 0}) or {}
     version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": ex.get("route_version")}, {"_id": 0}) or {}
@@ -195,18 +207,18 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     try:
         jpeg = shrink(frame)
     except Exception:
-        return await log(attempt_id, "vision_error", reason="not_an_image", latency_ms=ms(), model=model, source=source)
+        return await log_and_cue(attempt_id, "vision_error", reason="not_an_image", latency_ms=ms(), model=model, source=source)
     try:
         reply = await asyncio.wait_for(ask_model(model, build_prompt(version, last and last["checkpoint"], depth_text), jpeg), timeout)
     except asyncio.TimeoutError:
-        return await log(attempt_id, "vision_error", reason="timeout", latency_ms=ms(), model=model, source=source)
+        return await log_and_cue(attempt_id, "vision_error", reason="timeout", latency_ms=ms(), model=model, source=source)
     except Exception as exc:
-        return await log(attempt_id, "vision_error", reason=f"call_failed: {type(exc).__name__}", latency_ms=ms(), model=model, source=source)
+        return await log_and_cue(attempt_id, "vision_error", reason=f"call_failed: {type(exc).__name__}", latency_ms=ms(), model=model, source=source)
     result = parse_reply(reply, names)
     if result is None:
-        return await log(attempt_id, "vision_error", reason="bad_json", latency_ms=ms(), model=model, source=source)
-    await log(
-        attempt_id, "vision", result=result.model_dump(), latency_ms=ms(), model=model, route_version=version.get("version"),
+        return await log_and_cue(attempt_id, "vision_error", reason="bad_json", latency_ms=ms(), model=model, source=source)
+    await log_and_cue(
+        attempt_id, "vision", snap, result=result.model_dump(), latency_ms=ms(), model=model, route_version=version.get("version"),
         source=source, checkpoint=result.checkpoint_match, uncertain=result.uncertain, spoken=False,
         depth_prompt=depth_text, **snap,
     )

@@ -169,7 +169,7 @@ class AttemptEvent(BaseDocument):
     attempt_id: str
     seq: int = Field(default_factory=time.time_ns)
     t: str = Field(default_factory=now_iso)
-    type: Literal["start", "pause", "resume", "end", "help", "guide", "repeat", "vision", "vision_error", "vision_stopped"]
+    type: Literal["start", "pause", "resume", "end", "help", "guide", "repeat", "vision", "vision_error", "vision_stopped", "cue"]
     text: str = ""
     priority: Optional[int] = None
     spoken: bool = False
@@ -190,6 +190,8 @@ class AttemptEvent(BaseDocument):
     depth_centre: Optional[float] = None
     depth_right: Optional[float] = None
     depth_prompt: Optional[str] = None
+    entity: Optional[str] = None
+    for_event_id: Optional[str] = None
 
 
 class Correction(BaseDocument):

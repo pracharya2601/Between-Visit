@@ -52,7 +52,8 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-41 | Auto-proposed checkpoints (start, end, >45° turns) with person check + Sonnet landmark; other frames discarded | system | 8 |
 | F-42 | Review page: three.js 3D view + accessible checkpoint list; Save → v1 with 3D memory | practitioner | 8 |
 | F-43 | Client runs store a trail point every 0.25 m (practitioner-only) | system | 8 |
-| F-8 | Speaking vision cues, review/corrections UI: later | practitioner | later |
+| F-44 | Relevance policy: deterministic backend rules turn each vision event into one "cue" event (spoken or suppressed with a reason); spoken cues go through the existing cue path | client | 9 |
+| F-8 | Cue/policy UI (user's step 9), review/corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -63,7 +64,8 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 6: Vision analysis (no speaking) → F-31..F-34. [requirement](phase6/requirement.md) · [journeys](phase6/journeys.md)
 - Phase 7: Phone sensors from GlassCam (LiDAR depth + AR pose) → F-35..F-38. [requirement](phase7/requirement.md) · [journeys](phase7/journeys.md)
 - Phase 8: Teach a route by walking → F-39..F-43. [requirement](phase8/requirement.md) · [journeys](phase8/journeys.md)
-- Next (planned by user): speaking vision cues; the deferred checkpoint-2 match check after the first real teach walk.
+- Phase 9: Relevance policy (spoken cues, no new UI) → F-44. [requirement](phase9/requirement.md) · [journeys](phase9/journeys.md)
+- Next (planned by user): the UI for cues/policy; the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules

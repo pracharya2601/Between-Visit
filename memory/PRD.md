@@ -73,3 +73,11 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
+
+
+## Phase 9 — Relevance policy (Oct 2026) DONE
+- backend/cue_policy.py: pure deterministic decide(state, event, exercise, version, sensors, now) -> (cue, state); rules 1-5 (pause p0 / next checkpoint p2 / new entity p1 / on route / 3 s rate limit).
+- backend/cue_runner.py: per-attempt in-memory policy state, 1 s timer (no frames 2 s, no usable 5 s), logs one 'cue' event per vision/vision_error (for_event_id) and spoken cues as 'guide' (reason=policy) pushed to GlassCam + phone polling.
+- backend/test_hooks.py: check-only vision injection, mounted only when CUE_TEST_HOOK=1 (off by default).
+- tests/cue_policy_check.py replay|e2e. No UI changes.
+- Next (user plan): cue/policy UI; deferred checkpoint-2 match check after first real teach walk.

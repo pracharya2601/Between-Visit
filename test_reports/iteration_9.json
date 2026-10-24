@@ -1,0 +1,22 @@
+{
+  "summary": "Phase 9 relevance policy quick targeted checks per review request. Replay 21/21 PASS and deterministic across 3 runs. E2E with CUE_TEST_HOOK=1 confirmed: GlassCam receives guides with correct priorities (p0 pause, p2 checkpoint, p1 entity); rate_limited on_route (0.6 s after chair) produced no guide; known bench silent; latency 5 trials [39,27,29,29,28] ms (<500 ms); 0 cues while paused; one timer p0 pause cue after frames stopped post-resume; COVERAGE = 0 vision events without exactly one cue (17 events); OVERLOAD max = 1; CLEANUP removed its route/version/exercise/attempt/48 events. CUE_TEST_HOOK removed from .env, backend restarted, POST /api/test-hooks/attempts/x/vision -> 404 (confirmed). /api/health -> 200. att-test (synthetic pending device-test attempt) has 0 cue events as expected. /device-test page still loads with no new UI. DB state is clean: only the 'Test route (synthetic)' route and its hidden pending att-test attempt remain.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/tests/cue_policy_check.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "cue_policy.py is a clean pure deterministic module; policy ordering (pause > checkpoint > entity > on_route/silent > rate-limit) correctly implements REQ-284..315 and matches JRN-117..132 verified by replay.",
+    "cue_runner.py 1 s timer correctly handles no-frames-2s and no-usable-5s with pause_already_sent re-arm; _deliver pushes via ingest.push_guide and logs both 'cue' and 'guide'(reason='policy').",
+    "vision_worker.log_and_cue correctly gates logging on attempt still running (so paused/ended attempts yield 0 cues/logs - confirmed in e2e).",
+    "test_hooks.py is mounted only when CUE_TEST_HOOK=1, verified by 404 after removing the env flag.",
+    "run_transition start/resume -> on_running and pause/end -> on_stopped is covered by the e2e paused and post-resume no-frames timer behaviour."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "none",
+  "seed_data_creation": "none (e2e self-cleans; DB left with only 'Test route (synthetic)' + its att-test attempt as required)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "CUE_TEST_HOOK is OFF in backend/.env. Replay and e2e scripts both at /app/tests/cue_policy_check.py (modes: replay, e2e). Do not run teach_walk_sim (creates nondeletable storage blobs). Public base URL = https://route-checkpoints.preview.emergentagent.com.",
+  "rca of the issue": "n/a - no issues found"
+}

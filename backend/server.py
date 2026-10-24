@@ -14,6 +14,7 @@ from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
 from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup
+from cue_runner import resume_running_timers
 from run import router as run_router
 from teach import expire_idle_sessions
 from teach import router as teach_router
@@ -95,6 +96,7 @@ async def lifespan(_: FastAPI):
     await phase5_cleanup()
     await phase6_cleanup()
     expiry = asyncio.create_task(expire_idle_sessions())
+    await resume_running_timers()
     yield
     expiry.cancel()
     mongo.close()
@@ -130,6 +132,10 @@ app.include_router(workspace_router)
 app.include_router(exercises_router)
 app.include_router(run_router)
 app.include_router(teach_router)
+if os.environ.get("CUE_TEST_HOOK") == "1":
+    from test_hooks import router as test_hooks_router
+    app.include_router(test_hooks_router)
+    logger.warning("CUE_TEST_HOOK is on: check-only vision injection is mounted")
 
 app.add_middleware(
     CORSMiddleware,

@@ -3,6 +3,7 @@ from typing import Annotated, List, Literal, Optional
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, StringConstraints
 
+import cue_runner
 from db import db
 from ingest import key_matches, push_guide, state_for
 from models import Attempt, AttemptEvent, now_iso
@@ -182,6 +183,10 @@ async def run_transition(attempt_id: str, action: Literal["start", "pause", "res
     if res.modified_count == 0:
         raise HTTPException(status_code=409, detail="The run changed. Try again.")
     await log_event(a.id, action)
+    if target == "running":
+        await cue_runner.on_running(a.id)
+    else:
+        cue_runner.on_stopped(a.id, ended=target == "ended")
     return run_state(await get_attempt(a.id))
 
 
