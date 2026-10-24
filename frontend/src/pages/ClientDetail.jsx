@@ -6,7 +6,7 @@ import ExerciseList from "@/components/ExerciseList";
 export default function ClientDetail() {
   const { id } = useParams();
   const { status, data, code } = useApi(`${API}/clients/${id}`);
-  const exercises = useApi(`${API}/clients/${id}/exercises`);
+  const exercises = useApi(`${API}/clients/${id}/exercises`, 5000);
   return (
     <div className="bv-stack">
       <p><Link to="/clients" className="bv-link" data-testid="back-to-clients-link">Back to clients</Link></p>

@@ -13,7 +13,7 @@ async function copyText(text) {
   }
 }
 
-export default function CopyField({ id, label, value }) {
+export default function CopyField({ id, label, value, disabled = false }) {
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     await copyText(value);
@@ -24,8 +24,8 @@ export default function CopyField({ id, label, value }) {
     <div className="bv-field">
       <label htmlFor={id} className="bv-label">{label}</label>
       <div className="bv-copy-row">
-        <input id={id} readOnly value={value} className="bv-input bv-mono" data-testid={`${id}-value`} />
-        <button type="button" className="bv-btn" onClick={onCopy} aria-label={`Copy ${label}`} data-testid={`${id}-copy-button`}>
+        <input id={id} readOnly disabled={disabled} value={value} className="bv-input bv-mono" data-testid={`${id}-value`} />
+        <button type="button" className="bv-btn" onClick={onCopy} disabled={disabled} aria-label={`Copy ${label}`} data-testid={`${id}-copy-button`}>
           Copy
         </button>
       </div>

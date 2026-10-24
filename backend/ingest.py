@@ -47,15 +47,28 @@ class StreamState:
     last_frame_size: Optional[int] = None
     held_motion: Optional[dict] = None
     last_motion: Optional[dict] = None
+    glasses_frames: int = 0
+    phone_frames: int = 0
+    last_glasses_frame_at: Optional[float] = None
+    last_phone_frame_at: Optional[float] = None
 
-    def accept_frame(self, size: int, motion: Optional[dict] = None):
+    def accept_frame(self, size: int, motion: Optional[dict] = None, src: str = "glasses"):
         self.frames_received += 1
         self.last_frame_at = time.time()
         self.last_frame_size = size
+        if src == "glasses":
+            self.glasses_frames += 1
+            self.last_glasses_frame_at = self.last_frame_at
+        else:
+            self.phone_frames += 1
+            self.last_phone_frame_at = self.last_frame_at
         motion = motion or self.held_motion
         if motion is not None:
             self.last_motion = motion
         self.held_motion = None
+
+    def seconds_since_glasses_frame(self) -> Optional[float]:
+        return round(time.time() - self.last_glasses_frame_at, 1) if self.last_glasses_frame_at else None
 
 
 STREAMS: Dict[str, StreamState] = {}
@@ -63,6 +76,17 @@ STREAMS: Dict[str, StreamState] = {}
 
 def state_for(attempt_id: str) -> StreamState:
     return STREAMS.setdefault(attempt_id, StreamState())
+
+
+async def push_guide(attempt_id: str, text: str, priority: int = 1) -> bool:
+    ws = state_for(attempt_id).ws
+    if ws is None:
+        return False
+    try:
+        await asyncio.wait_for(ws.send_json({"type": "guide", "text": text, "priority": priority, "speak": True}), 2)
+        return True
+    except Exception:
+        return False
 
 
 class Motion(BaseModel):
@@ -87,6 +111,9 @@ class StreamStatus(BaseModel):
     seconds_since_last_frame: Optional[float]
     last_frame_size: Optional[int]
     last_motion: Optional[Dict[str, Any]]
+    glasses_frames: int
+    phone_frames: int
+    seconds_since_glasses_frame: Optional[float]
 
 
 async def find_attempt(**query) -> Optional[Attempt]:
@@ -169,7 +196,7 @@ async def phone_frame(
             raise HTTPException(status_code=413, detail="Frame over 1 MB")
     if size == 0:
         raise HTTPException(status_code=422, detail="Empty frame")
-    state.accept_frame(size, {"src": "phone", "heading": heading, "steps": steps})
+    state.accept_frame(size, {"src": "phone", "heading": heading, "steps": steps}, src="phone")
     return {"accepted": True, "frames_received": state.frames_received}
 
 
@@ -185,18 +212,16 @@ async def stream_status(attempt_id: str):
         seconds_since_last_frame=since,
         last_frame_size=s.last_frame_size,
         last_motion=s.last_motion,
+        glasses_frames=s.glasses_frames,
+        phone_frames=s.phone_frames,
+        seconds_since_glasses_frame=s.seconds_since_glasses_frame(),
     )
 
 
 @router.post("/attempts/{attempt_id}/cue")
 async def send_cue(attempt_id: str, cue: CueIn):
     await require_attempt(attempt_id)
-    ws = state_for(attempt_id).ws
-    if ws is None:
-        raise HTTPException(status_code=409, detail="Not connected")
-    try:
-        await asyncio.wait_for(ws.send_json({"type": "guide", "text": cue.text, "priority": cue.priority, "speak": True}), 2)
-    except Exception:
+    if not await push_guide(attempt_id, cue.text, cue.priority):
         raise HTTPException(status_code=409, detail="Not connected")
     return {"sent": True}
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, StringConstraints
 from pymongo.errors import DuplicateKeyError
 
 from db import db
-from ingest import hash_key, key_matches
+from ingest import hash_key
 from models import Attempt, AttemptPublic, Exercise, SilenceRules
 from workspace import get_route
 
@@ -34,19 +34,13 @@ class AttemptCreated(BaseModel):
     key: str
 
 
+class AttemptView(AttemptPublic):
+    last_help_at: Optional[str] = None
+
+
 class ExerciseView(Exercise):
     route_name: str
-    attempts: List[AttemptPublic]
-
-
-class RunInfo(BaseModel):
-    attempt_id: str
-    stream_id: str
-    goal: str
-
-
-class KeyIn(BaseModel):
-    key: str
+    attempts: List[AttemptView]
 
 
 async def create_attempt(exercise_id: str) -> tuple[Attempt, str]:
@@ -118,25 +112,10 @@ async def client_exercises(client_id: str):
     for d in docs:
         ex = Exercise.from_mongo(d)
         attempts = await db.attempts.find({"exercise_id": ex.id}, {"_id": 0, "key_hash": 0}).sort("created_at", 1).to_list(1000)
-        views.append(ExerciseView(**ex.model_dump(), route_name=routes[ex.route_id], attempts=[AttemptPublic.from_mongo(a) for a in attempts]))
+        views.append(ExerciseView(**ex.model_dump(), route_name=routes[ex.route_id], attempts=[await attempt_view(a) for a in attempts]))
     return views
 
 
-async def get_attempt(attempt_id: str) -> Attempt:
-    doc = await db.attempts.find_one({"id": attempt_id}, {"_id": 0})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return Attempt.from_mongo(doc)
-
-
-@router.get("/run/{attempt_id}", response_model=RunInfo)
-async def run_info(attempt_id: str):
-    attempt = await get_attempt(attempt_id)
-    exercise = await db.exercises.find_one({"id": attempt.exercise_id}, {"_id": 0, "goal": 1})
-    return RunInfo(attempt_id=attempt.id, stream_id=attempt.stream_id, goal=exercise["goal"] if exercise else "")
-
-
-@router.post("/run/{attempt_id}/verify")
-async def verify_run_key(attempt_id: str, body: KeyIn):
-    attempt = await get_attempt(attempt_id)
-    return {"valid": key_matches(body.key, attempt.key_hash)}
+async def attempt_view(doc: dict) -> AttemptView:
+    help_ev = await db.attempt_events.find_one({"attempt_id": doc["id"], "type": "help"}, {"_id": 0, "t": 1}, sort=[("seq", -1)])
+    return AttemptView(**AttemptPublic.from_mongo(doc).model_dump(), last_help_at=help_ev["t"] if help_ev else None)

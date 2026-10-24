@@ -12,7 +12,8 @@ from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
-from migrations import phase4_cleanup, phase4_model_updates
+from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup
+from run import router as run_router
 from models import (
     COLLECTIONS,
     FOREIGN_KEYS,
@@ -39,6 +40,7 @@ async def ensure_indexes():
     await db.attempts.create_index("stream_id", unique=True)
     await db.test_config.create_index("stream_id", unique=True)
     await db.route_versions.create_index([("route_id", 1), ("version", 1)], unique=True)
+    await db.attempt_events.create_index([("attempt_id", 1), ("type", 1), ("seq", 1)])
 
 
 async def reset_unsaved_route_versions():
@@ -86,6 +88,7 @@ async def lifespan(_: FastAPI):
     await reset_unsaved_route_versions()
     await phase4_model_updates()
     await phase4_cleanup()
+    await phase5_cleanup()
     yield
     mongo.close()
 
@@ -118,6 +121,7 @@ app.include_router(api_router)
 app.include_router(ingest_router)
 app.include_router(workspace_router)
 app.include_router(exercises_router)
+app.include_router(run_router)
 
 app.add_middleware(
     CORSMiddleware,

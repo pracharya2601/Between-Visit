@@ -1,3 +1,4 @@
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
@@ -110,10 +111,12 @@ class Exercise(BaseDocument):
 
 class AttemptPublic(BaseDocument):
     exercise_id: str
-    status: str
+    status: Literal["not_started", "running", "paused", "ended", "pending"]
     stream_id: str
     started_at: Optional[str] = None
     ended_at: Optional[str] = None
+    active_seconds: float = 0
+    running_since: Optional[str] = None
 
 
 class Attempt(AttemptPublic):
@@ -129,9 +132,11 @@ class TestConfig(BaseDocument):
 
 class AttemptEvent(BaseDocument):
     attempt_id: str
-    t: float
-    type: str
+    seq: int = Field(default_factory=time.time_ns)
+    t: str = Field(default_factory=now_iso)
+    type: Literal["start", "pause", "resume", "end", "help", "guide", "repeat"]
     text: str = ""
+    priority: Optional[int] = None
     spoken: bool = False
     suppressed_reason: Optional[str] = None
     checkpoint: Optional[str] = None

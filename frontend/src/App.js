@@ -8,7 +8,7 @@ import ClientDetail from "@/pages/ClientDetail";
 import RoutesPage from "@/pages/Routes";
 import RouteBuilder from "@/pages/RouteBuilder";
 import AssignExercise from "@/pages/AssignExercise";
-import RunPage from "@/pages/RunPage";
+import ClientRun from "@/pages/ClientRun";
 
 function Workspace() {
   return (
@@ -30,7 +30,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/run/:id" element={<Layout nav={false}><RunPage /></Layout>} />
+        <Route path="/run/:id" element={<Layout nav={false}><ClientRun /></Layout>} />
         <Route path="*" element={<Workspace />} />
       </Routes>
     </BrowserRouter>

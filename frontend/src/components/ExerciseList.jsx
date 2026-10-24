@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { API } from "@/lib/api";
-import OneTimeConfirmation, { runPath } from "@/components/OneTimeConfirmation";
+import OneTimeConfirmation from "@/components/OneTimeConfirmation";
+import AttemptRow from "@/components/AttemptRow";
 
-const STATUS = { not_started: "Not started" };
 const CUE = { minimal: "Minimal", standard: "Standard" };
 
 function ExerciseItem({ ex, n }) {
   const [attempts, setAttempts] = useState(ex.attempts);
+  useEffect(() => { setAttempts(ex.attempts); }, [ex.attempts]);
   const [created, setCreated] = useState(null);
   const [msg, setMsg] = useState("");
   const p = `exercise-${n}`;
@@ -31,13 +31,7 @@ function ExerciseItem({ ex, n }) {
       <p className="bv-row-meta" data-testid={`${p}-meta`}>{ex.route_name} · v{ex.route_version} · {CUE[ex.cue_style]}</p>
       <h4 className="bv-label bv-label-spaced">Attempts</h4>
       <ul className="bv-list" data-testid={`${p}-attempts`}>
-        {attempts.map((a) => (
-          <li key={a.id} data-testid={`attempt-${a.stream_id}`}>
-            <span className="bv-mono">{a.stream_id}</span> · {STATUS[a.status] ?? a.status}
-            <br />
-            <Link to={runPath(a.id)} className="bv-link bv-mono" data-testid={`attempt-${a.stream_id}-run-link`}>{runPath(a.id)}</Link>
-          </li>
-        ))}
+        {attempts.map((a) => <AttemptRow key={a.id} a={a} />)}
       </ul>
       {created ? (
         <OneTimeConfirmation title="New attempt created" created={created} onClose={() => setCreated(null)} />

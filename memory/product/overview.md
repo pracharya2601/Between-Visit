@@ -32,13 +32,21 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-21 | One-time confirmation: run link (/run/{id}#key=…), stream ID, key, copy buttons | practitioner | 4 |
 | F-22 | Client page: exercises with attempts, plus "New attempt" | practitioner | 4 |
 | F-23 | /run/{attempt id} placeholder: goal, stream ID, key from the link | client | 4 |
-| F-8 | Attempt events, corrections, review UI: later | practitioner | later |
+| F-24 | Cleanup of the Reception route + draft and their exercises/attempts; checks always delete their own data | system | 5 |
+| F-25 | Client run page: VoiceOver-friendly controls Start/Pause/Resume/Repeat cue/Request help/End, summary, stream ID + key, elapsed/heading/steps, assertive caption | client | 5 |
+| F-26 | Attempt status + attempt_events logging (start, pause, resume, end, help, guide) | system | 5 |
+| F-27 | Help alert: red "Help requested HH:MM" on the client page, auto-refresh 5 s | practitioner | 5 |
+| F-28 | "Message client" box on running/paused attempts → guide cue to phone + GlassCam | practitioner | 5 |
+| F-29 | Phone cue polling 1 s, speechSynthesis when GlassCam isn't live, "Speak cues aloud" toggle | client | 5 |
+| F-30 | Phone camera fallback (1 JPEG/s with heading + steps), Wake Lock | client | 5 |
+| F-8 | Vision guidance, review/corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
 - Phase 2: Device ingest, no vision → F-9..F-12. [requirement](phase2/requirement.md) · [journeys](phase2/journeys.md)
 - Phase 3: Practitioner workspace + route builder → F-13..F-18. [requirement](phase3/requirement.md) · [journeys](phase3/journeys.md)
 - Phase 4: Exercise builder + assignment → F-19..F-23. [requirement](phase4/requirement.md) · [journeys](phase4/journeys.md)
+- Phase 5: Client run page → F-24..F-30. [requirement](phase5/requirement.md) · [journeys](phase5/journeys.md)
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules
@@ -61,6 +69,7 @@ None in Phase 1. No auth.
 - Backend down or empty data → the home page shows "Couldn't load practice data".
 
 ## Seed Data
+- Rule (from Phase 5): any data created for checks is deleted afterwards. Object storage can't delete files (405), so check photos must be made unservable and reported.
 - Practice: "Bay Mobility Practice"
 - Practitioner: "J. Rivera (synthetic)", role "O&M specialist"
 - Clients: "Client A (synthetic)", "Client B (synthetic)", synthetic: true

@@ -38,5 +38,13 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Frontend: AssignExercise page + AssignForm, OneTimeConfirmation (run link with #key, stream ID, key, copy, shown-once warning), ExerciseList on client page with New attempt, /run/:id page without nav.
 - Demo data: "Reception route (synthetic)" (v2, exercise pinned to v1 for Client A, 2 attempts), "Unsaved draft (synthetic)".
 
+## Phase 5 implemented (2026-10-24): client run page
+- Cleanup migration phase5-cleanup removed Reception route + Unsaved draft (2 routes, 1 checkpoint, 2 versions, 2 exercises, 3 attempts); photo 07adbf27-d646-48db-b321-6fbe27c5bed0 is now unservable (404; storage has no delete).
+- backend/run.py: X-Stream-Key-protected run API (GET info, cues polling with seq cursor, ack, help, repeat, start/pause/resume/end with strict 409 transitions), practitioner POST /api/attempts/{id}/message. Every action is logged as an attempt_event (seq, t ISO UTC). Attempts track active_seconds/running_since, so elapsed time excludes pauses.
+- ingest.py: glasses vs phone frame counters, push_guide helper.
+- migrations.py: generic delete_routes_cascade + cleanup_once.
+- Frontend: pages/ClientRun.jsx + components/run/* (RunSession, RunControls, EndConfirm, RunMetrics, RunSummary, PhoneCamera), hooks useMotion/useWakeLock/usePhoneCamera, lib/speech.js; client page auto-refresh 5 s with AttemptRow (red help alert, Message client).
+- Check scripts: tests/run_check_data.py (setup/cleanup), tests/run_api_check.py. Check data deleted after use.
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
