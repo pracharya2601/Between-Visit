@@ -34,6 +34,7 @@ export default function RouteBuilder() {
   const onName = (value) => {
     setName(value);
     clearTimeout(nameTimer.current);
+    if (!value.trim()) return setStatus("A route needs a name. The last saved name is kept until you type a new one.");
     nameTimer.current = setTimeout(() => saveName(value).catch(() => setStatus("Couldn't save the route name.")), 500);
   };
   const replace = (cp) => setCps((list) => list.map((c) => (c.id === cp.id ? cp : c)));

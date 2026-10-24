@@ -10,6 +10,7 @@ from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, WebSocket
 from pydantic import BaseModel, StringConstraints, ValidationError
 
+import vision_worker
 from db import db
 from models import Attempt
 
@@ -165,6 +166,7 @@ async def ingest(ws: WebSocket, stream_id: str):
                     state.frames_dropped += 1
                 else:
                     state.accept_frame(len(data))
+                    vision_worker.offer(attempt.id, data, "glasses")
                 continue
             motion = parse_motion(msg.get("text") or "")
             if motion:
@@ -189,14 +191,17 @@ async def phone_frame(
         raise HTTPException(status_code=401, detail="Invalid stream key")
     state = state_for(attempt.id)
     size = 0
+    body = bytearray()
     async for chunk in request.stream():
         size += len(chunk)
         if size > MAX_FRAME_BYTES:
             state.frames_dropped += 1
             raise HTTPException(status_code=413, detail="Frame over 1 MB")
+        body.extend(chunk)
     if size == 0:
         raise HTTPException(status_code=422, detail="Empty frame")
     state.accept_frame(size, {"src": "phone", "heading": heading, "steps": steps}, src="phone")
+    vision_worker.offer(attempt.id, bytes(body), "phone")
     return {"accepted": True, "frames_received": state.frames_received}
 
 

@@ -122,6 +122,12 @@ class AttemptPublic(BaseDocument):
 class Attempt(AttemptPublic):
     key_hash: str
 
+    def elapsed_seconds(self) -> float:
+        total = self.active_seconds
+        if self.status == "running" and self.running_since:
+            total += (datetime.now(timezone.utc) - datetime.fromisoformat(self.running_since)).total_seconds()
+        return round(total, 1)
+
 
 class TestConfig(BaseDocument):
     # plain key of the seeded test attempt only, read solely by /device-test
@@ -134,13 +140,19 @@ class AttemptEvent(BaseDocument):
     attempt_id: str
     seq: int = Field(default_factory=time.time_ns)
     t: str = Field(default_factory=now_iso)
-    type: Literal["start", "pause", "resume", "end", "help", "guide", "repeat"]
+    type: Literal["start", "pause", "resume", "end", "help", "guide", "repeat", "vision", "vision_error", "vision_stopped"]
     text: str = ""
     priority: Optional[int] = None
     spoken: bool = False
     suppressed_reason: Optional[str] = None
     checkpoint: Optional[str] = None
     uncertain: bool = False
+    result: Optional[dict] = None
+    latency_ms: Optional[int] = None
+    model: Optional[str] = None
+    route_version: Optional[int] = None
+    source: Optional[Literal["glasses", "phone"]] = None
+    reason: Optional[str] = None
 
 
 class Correction(BaseDocument):

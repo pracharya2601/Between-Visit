@@ -1,7 +1,7 @@
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, StringConstraints
 
 from db import db
 from models import Checkpoint, CheckpointSnapshot, Client, Photo, Route, RouteVersion
@@ -22,7 +22,7 @@ class RouteDetail(Route):
 
 
 class RouteUpdate(BaseModel):
-    name: str
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class CheckpointUpdate(BaseModel):
@@ -88,9 +88,9 @@ async def list_routes():
 
 
 @router.post("/routes", response_model=Route, status_code=201)
-async def create_route():
+async def create_route(body: RouteUpdate):
     practice = await db.practices.find_one({}, {"_id": 0, "id": 1})
-    route = Route(practice_id=practice["id"], name="")
+    route = Route(practice_id=practice["id"], name=body.name)
     await db.routes.insert_one(route.to_mongo())
     return route
 
@@ -104,7 +104,7 @@ async def route_detail(route_id: str):
 @router.patch("/routes/{route_id}", response_model=Route)
 async def rename_route(route_id: str, body: RouteUpdate):
     await get_route(route_id)
-    await db.routes.update_one({"id": route_id}, {"$set": {"name": body.name.strip()}})
+    await db.routes.update_one({"id": route_id}, {"$set": {"name": body.name}})
     return await get_route(route_id)
 
 

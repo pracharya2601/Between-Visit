@@ -39,7 +39,11 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-28 | "Message client" box on running/paused attempts → guide cue to phone + GlassCam | practitioner | 5 |
 | F-29 | Phone cue polling 1 s, speechSynthesis when GlassCam isn't live, "Speak cues aloud" toggle | client | 5 |
 | F-30 | Phone camera fallback (1 JPEG/s with heading + steps), Wake Lock | client | 5 |
-| F-8 | Vision guidance, review/corrections UI: later | practitioner | later |
+| F-31 | Cleanup: the 2 blank-named routes + the empty checkpoint on the hidden test route | system | 6 |
+| F-32 | Vision loop per running attempt: newest frame only, ≤1/s, skip while busy, Claude Haiku 4.5 (one config setting), route memory as text, JSON result | system | 6 |
+| F-33 | Log "vision" / "vision_error" attempt_events; 8 s timeout; stop after 30 min of running | system | 6 |
+| F-34 | GET /api/attempts/{id}/events (newest first) | practitioner | 6 |
+| F-8 | Speaking vision cues (step 7), review/corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -47,6 +51,8 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 3: Practitioner workspace + route builder → F-13..F-18. [requirement](phase3/requirement.md) · [journeys](phase3/journeys.md)
 - Phase 4: Exercise builder + assignment → F-19..F-23. [requirement](phase4/requirement.md) · [journeys](phase4/journeys.md)
 - Phase 5: Client run page → F-24..F-30. [requirement](phase5/requirement.md) · [journeys](phase5/journeys.md)
+- Phase 6: Vision analysis (no speaking) → F-31..F-34. [requirement](phase6/requirement.md) · [journeys](phase6/journeys.md)
+- Phase 7 (planned by user): speaking vision cues.
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules
@@ -58,6 +64,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 None in Phase 1. No auth.
 - Phase 2: none external.
 - Phase 3: Claude Sonnet 5.5 (vision) via the Emergent LLM key (emergentintegrations), for landmark suggestions. Emergent Object Storage for checkpoint photos.
+- Phase 6: Claude Haiku 4.5 vision via the Emergent LLM key for live frame analysis (model in a single config setting). Frames are sent to Anthropic in memory only, never stored.
 
 ## Edge Cases
 - Synthetic people only: clients.synthetic must be true; the model rejects false.

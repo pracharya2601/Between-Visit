@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException
@@ -74,10 +73,7 @@ async def keyed_attempt(attempt_id: str, key: Optional[str]) -> Attempt:
 
 
 def elapsed(a: Attempt) -> float:
-    total = a.active_seconds
-    if a.status == "running" and a.running_since:
-        total += (datetime.now(timezone.utc) - datetime.fromisoformat(a.running_since)).total_seconds()
-    return round(total, 1)
+    return a.elapsed_seconds()
 
 
 def run_state(a: Attempt) -> RunState:
@@ -187,6 +183,13 @@ async def run_transition(attempt_id: str, action: Literal["start", "pause", "res
         raise HTTPException(status_code=409, detail="The run changed. Try again.")
     await log_event(a.id, action)
     return run_state(await get_attempt(a.id))
+
+
+@router.get("/attempts/{attempt_id}/events", response_model=List[AttemptEvent])
+async def attempt_events(attempt_id: str, limit: int = 200):
+    a = await get_attempt(attempt_id)
+    docs = await db.attempt_events.find({"attempt_id": a.id}, {"_id": 0}).sort("seq", -1).to_list(min(max(limit, 1), 1000))
+    return [AttemptEvent.from_mongo(d) for d in docs]
 
 
 @router.post("/attempts/{attempt_id}/message", status_code=201)

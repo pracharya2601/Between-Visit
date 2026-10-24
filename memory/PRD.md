@@ -46,5 +46,15 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Frontend: pages/ClientRun.jsx + components/run/* (RunSession, RunControls, EndConfirm, RunMetrics, RunSummary, PhoneCamera), hooks useMotion/useWakeLock/usePhoneCamera, lib/speech.js; client page auto-refresh 5 s with AttemptRow (red help alert, Message client).
 - Check scripts: tests/run_check_data.py (setup/cleanup), tests/run_api_check.py. Check data deleted after use.
 
+## Phase 6 implemented (2026-10-24): vision analysis (no speaking)
+- phase6-cleanup migration: deleted the 2 blank routes (by id only) and the empty checkpoint on the hidden test route.
+- New route now needs a name: POST /api/routes {name} and PATCH both reject blank names; the Routes page has a name field + "Create route".
+- backend/vision_worker.py: one frame slot per attempt (newest wins, frames during a call discarded, no queue), ≥1 s between call starts, only while running, 30-min running cap → one "vision_stopped". Model from VISION_MODEL in backend/.env (claude-haiku-4-5-20251001), 8 s timeout. Pydantic validation, checkpoint name check, person label stripping. Events: vision / vision_error {reason, latency_ms, model}.
+- ingest.py offers every accepted glasses/phone frame to the worker; counters unchanged.
+- GET /api/attempts/{id}/events (newest first, 404 unknown).
+- The first model call after a backend start stalls the event loop up to about 1.2 s (library warm-up); after that it's about 20 ms.
+- Check script: tests/vision_check.py (with tests/run_check_data.py setup/cleanup).
+- DEFERRED: REQ-206 checkpoint-2 check, to a later step where the route is created automatically from a GlassCam walk. Keep tests/vision_check.py for it. Phase 6 closed.
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.

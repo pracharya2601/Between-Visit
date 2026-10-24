@@ -51,6 +51,20 @@ async def phase5_cleanup():
     await cleanup_once("phase5-cleanup", PHASE4_DEMO_ROUTES)
 
 
+PHASE6_ROUTE_IDS = ["b970d705-4f36-43ed-9163-d2e42bf5ea2e", "a5ffedc8-237a-473e-92dd-4642d82fa68e"]
+
+
+async def phase6_cleanup():
+    if await db.migrations.find_one({"id": "phase6-cleanup"}):
+        return
+    result = await delete_routes_cascade(PHASE6_ROUTE_IDS)
+    test_routes = await db.routes.distinct("id", {"is_test": True})
+    empty = {"route_id": {"$in": test_routes}, "name": "", "photo_url": None}
+    result["test_route_empty_checkpoints"] = (await db.checkpoints.delete_many(empty)).deleted_count
+    await db.migrations.insert_one({"id": "phase6-cleanup", "created_at": now_iso(), "result": result})
+    logger.info("phase6-cleanup: %s", result)
+
+
 async def phase4_model_updates():
     await db.routes.update_many({"name": TEST_ROUTE, "is_test": {"$ne": True}}, {"$set": {"is_test": True}})
     await db.exercises.update_many(

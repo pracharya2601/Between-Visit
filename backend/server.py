@@ -12,7 +12,7 @@ from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
-from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup
+from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup
 from run import router as run_router
 from models import (
     COLLECTIONS,
@@ -89,6 +89,7 @@ async def lifespan(_: FastAPI):
     await phase4_model_updates()
     await phase4_cleanup()
     await phase5_cleanup()
+    await phase6_cleanup()
     yield
     mongo.close()
 
