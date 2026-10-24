@@ -6,6 +6,7 @@ from typing import Optional
 
 import cue_policy
 import ingest
+import sensors as sensors_mod
 from db import db
 from models import Attempt, AttemptEvent
 
@@ -26,11 +27,11 @@ async def _context(attempt: Attempt):
     return CONTEXT[attempt.id]
 
 
-async def _deliver(attempt_id: str, cue: cue_policy.Cue, event: dict):
+async def _deliver(attempt_id: str, cue: cue_policy.Cue, event: dict, snap: dict):
     sent = await ingest.push_guide(attempt_id, cue.text, cue.priority) if cue.spoken else False
     fields = cue.as_dict()
     trigger = fields.pop("trigger")
-    docs = [AttemptEvent(attempt_id=attempt_id, type="cue", reason=trigger, for_event_id=event.get("id"), **fields).to_mongo()]
+    docs = [AttemptEvent(attempt_id=attempt_id, type="cue", reason=trigger, for_event_id=event.get("id"), pos_x=snap.get("pos_x"), pos_z=snap.get("pos_z"), **fields).to_mongo()]
     if cue.spoken:
         docs.append(AttemptEvent(attempt_id=attempt_id, type="guide", text=cue.text, priority=cue.priority, spoken=sent, reason="policy").to_mongo())
     await db.attempt_events.insert_many(docs)
@@ -46,10 +47,13 @@ async def handle(attempt_id: str, event: dict, sensors: Optional[dict] = None) -
         if attempt.status != "running":
             return attempt
         ex, version = await _context(attempt)
-        snap = {**(sensors or {}), "last_frame_at": ingest.state_for(attempt_id).last_frame_at}
+        if sensors is None:
+            x, z = sensors_mod.sensors_for(attempt_id).pose_xz()
+            sensors = {"pos_x": x, "pos_z": z}
+        snap = {**sensors, "last_frame_at": ingest.state_for(attempt_id).last_frame_at}
         cue, STATES[attempt_id] = cue_policy.decide(STATES.get(attempt_id, cue_policy.PolicyState()), event, ex, version, snap, time.time())
         if cue is not None:
-            await _deliver(attempt_id, cue, event)
+            await _deliver(attempt_id, cue, event, snap)
         return attempt
 
 

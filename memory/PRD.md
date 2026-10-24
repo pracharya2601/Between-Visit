@@ -81,3 +81,10 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - backend/test_hooks.py: check-only vision injection, mounted only when CUE_TEST_HOOK=1 (off by default).
 - tests/cue_policy_check.py replay|e2e. No UI changes.
 - Next (user plan): cue/policy UI; deferred checkpoint-2 match check after first real teach walk.
+
+## Phase 10 — Start-grace fix + attempt review (Oct 2026) DONE
+- Grace: the 2 s no-frames rule waits for the first frame after Start/Resume or 15 s; the 5 s no-usable rule counts from the first frame.
+- Cue events store pos_x/pos_z, would_have_said and details; phone frames store heading/steps samples on the attempt (practitioner-only).
+- GET /api/attempts/{id}/review (+ /review/points): header, timeline with plain-word reasons, 3D (aligned) or 2D (AR trail / dead reckoning) path.
+- /review/{id} page: header, filters, Details JSON, 3D (Scene3D + projected dot buttons) or SVG 2D path, dot<->timeline linking; "Review" link on each attempt.
+- Kept demo data: Client A, goal "Review demo (synthetic)": 3D attempt 48461db6-54af-4344-a634-30753164eb85, 2D attempt a59b1526-6c85-4c7b-992f-2854fd908502.

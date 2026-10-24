@@ -67,9 +67,9 @@ def dist_to_walls(pts):
     return np.array(errs)
 
 
-async def walk():
+async def walk(name="Teach sim corridor (synthetic)"):
     print("empty name:", requests.post(f"{API}/teach", json={"route_name": " "}, headers=UA).status_code)
-    s = requests.post(f"{API}/teach", json={"route_name": "Teach sim corridor (synthetic)"}, headers=UA).json()
+    s = requests.post(f"{API}/teach", json={"route_name": name}, headers=UA).json()
     print("session:", s["stream_id"], "key present:", bool(s["key"]), "| status:", get(f"/teach/{s['id']}/status").json())
     try:
         async with websockets.connect(f"{WSS}/ws/ingest/{s['stream_id']}?key=wrong") as ws:
@@ -200,4 +200,5 @@ async def cleanup():
     STATE.unlink()
 
 
-{"walk": lambda: asyncio.run(walk()), "save": save, "cleanup": lambda: asyncio.run(cleanup())}[sys.argv[1]]()
+if __name__ == "__main__":
+    {"walk": lambda: asyncio.run(walk()), "save": save, "cleanup": lambda: asyncio.run(cleanup())}[sys.argv[1]]()

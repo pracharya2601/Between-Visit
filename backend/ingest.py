@@ -13,7 +13,7 @@ from pydantic import BaseModel, StringConstraints, ValidationError
 import sensors
 import vision_worker
 from db import db
-from models import Attempt
+from models import Attempt, now_iso
 
 MAX_FRAME_BYTES = 1024 * 1024
 TEST_STREAM_ID = "att-test"
@@ -74,6 +74,7 @@ class StreamState:
 
 
 STREAMS: Dict[str, StreamState] = {}
+MOTION_LAST: Dict[str, int] = {}
 
 
 def state_for(attempt_id: str) -> StreamState:
@@ -233,6 +234,10 @@ async def phone_frame(
         raise HTTPException(status_code=422, detail="Empty frame")
     state.accept_frame(size, {"src": "phone", "heading": heading, "steps": steps}, src="phone")
     vision_worker.offer(attempt.id, bytes(body), "phone")
+    if heading is not None and steps is not None and MOTION_LAST.get(attempt.id) != steps:
+        sample = {"t": now_iso(), "heading": round(heading, 1), "steps": steps}
+        if (await db.attempts.update_one({"id": attempt.id, "status": "running"}, {"$push": {"motion": sample}})).modified_count:
+            MOTION_LAST[attempt.id] = steps
     return {"accepted": True, "frames_received": state.frames_received}
 
 

@@ -65,7 +65,7 @@ function MarkerLabel({ n }) {
   return <sprite position={[0, 0.7, 0]} scale={[0.7, 0.7, 0.7]}><spriteMaterial map={texture} depthTest={false} /></sprite>;
 }
 
-export default function Scene3D({ scene, pointsUrl }) {
+export default function Scene3D({ scene, pointsUrl, label, interactive = false, testId = "teach-scene", overlay = null, children }) {
   const [positions, setPositions] = useState(null);
   useEffect(() => {
     fetch(pointsUrl).then((r) => r.arrayBuffer()).then((b) => setPositions(new Float32Array(b))).catch(() => setPositions(new Float32Array(0)));
@@ -82,8 +82,8 @@ export default function Scene3D({ scene, pointsUrl }) {
   const summary = `3D map of the walk: ${scene.points.toLocaleString()} points (${scene.points_sent.toLocaleString()} shown), ${scene.planes.length} planes, ${scene.metres_walked.toFixed(1)} metres walked, ${scene.checkpoints.length} checkpoints. The checkpoint list gives the same information.`;
 
   return (
-    <div className="bv-scene" role="img" aria-label={summary} data-testid="teach-scene">
-      <Canvas camera={{ position: camPos, fov: 50 }} data-testid="teach-canvas">
+    <div className="bv-scene" role={interactive ? "group" : "img"} aria-label={label || summary} data-testid={testId}>
+      <Canvas camera={{ position: camPos, fov: 50 }} data-testid={`${testId === "teach-scene" ? "teach" : testId}-canvas`}>
         <ambientLight />
         {positions && <PointCloud positions={positions} />}
         {scene.planes.map((p) => <PlaneMesh key={p.id} plane={p} />)}
@@ -94,8 +94,10 @@ export default function Scene3D({ scene, pointsUrl }) {
             <MarkerLabel n={c.order} />
           </group>
         ))}
+        {children}
         <OrbitControls target={target} makeDefault />
       </Canvas>
+      {overlay}
       <p className="bv-hint" aria-hidden="true">Drag to orbit, pinch or scroll to zoom.</p>
     </div>
   );

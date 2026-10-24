@@ -50,6 +50,8 @@ export default function AttemptRow({ a }) {
       )}
       <br />
       <Link to={runPath(a.id)} className="bv-link bv-mono" data-testid={`${p}-run-link`}>{runPath(a.id)}</Link>
+      <br />
+      <Link to={`/review/${a.id}`} className="bv-link" aria-label={`Review attempt ${a.stream_id}`} data-testid={`${p}-review-link`}>Review</Link>
       {(a.status === "running" || a.status === "paused") && <MessageForm attemptId={a.id} p={p} />}
     </li>
   );

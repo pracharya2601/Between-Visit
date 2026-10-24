@@ -146,9 +146,51 @@ textarea.bv-input { resize: vertical; }
 .bv-tag-warn { background: #fff3c4; }
 .bv-review { display: grid; gap: 1.5rem; }
 @media (min-width: 64rem) { .bv-review { grid-template-columns: 1.3fr 1fr; align-items: start; } .bv-review-scene { position: sticky; top: 1rem; } }
-.bv-scene { width: 100%; height: 26rem; border: 2px solid var(--bv-ink); background: #0b0b0b; }
+.bv-scene { position: relative; width: 100%; border: 2px solid var(--bv-ink); background: #0b0b0b; }
+.bv-scene > div:first-child { height: 26rem !important; }
+.bv-dot-layer { position: absolute; top: 0; left: 0; width: 100%; height: 26rem; overflow: hidden; pointer-events: none; }
+.bv-dot-abs { position: absolute; top: 0; left: 0; pointer-events: auto; }
 .bv-scene .bv-hint { color: var(--bv-ink); background: #fff; margin: 0 !important; padding: 0.25rem 0.5rem; }
 .bv-marker { display: inline-block; min-width: 1.6rem; text-align: center; background: #fff; color: #0b0b0b; border: 2px solid #0b0b0b; font-weight: 700; font-size: 1rem; padding: 0 0.3rem; }
+
+.bv-review-route { margin: 0.5rem 0 1.25rem; }
+.bv-review-stats { margin-top: 0.5rem; }
+.bv-filter[aria-pressed="true"] { background: var(--bv-ink); color: #fff; }
+.bv-tl-note { margin: 0.75rem 0 0; font-weight: 700; }
+.bv-tl { list-style: none; margin: 1rem 0 0; padding: 0; }
+.bv-tl-item { border: 2px solid var(--bv-ink); border-left-width: 8px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; background: #fff; scroll-margin: 6rem; }
+.bv-tl-item p { margin: 0; }
+.bv-tl-spoken { border-left-color: #004d1a; }
+.bv-tl-suppressed { border-left-color: #b35900; border-left-style: dashed; }
+.bv-tl-selected { background: #fff3c4; box-shadow: 0 0 0 4px var(--bv-ink); }
+.bv-tl-head { display: flex; flex-wrap: wrap; gap: 0.75rem; font-weight: 700; }
+.bv-tl-time { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.bv-tl-kind { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.9rem; }
+.bv-tl-text { font-size: 1.05rem; margin-top: 0.25rem !important; overflow-wrap: anywhere; }
+.bv-tl-reason { font-weight: 700; color: #6b3500; margin-top: 0.25rem !important; }
+.bv-tl-json { background: #0b0b0b; color: #fff; padding: 0.75rem; font-size: 0.8rem; overflow-x: auto; margin: 0.75rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bv-dot { display: inline-block; width: 1.3rem; height: 1.3rem; padding: 0; border: 3px solid #0b0b0b; cursor: pointer; vertical-align: middle; }
+.bv-dot-spoken { background: #1fbf4a; border-radius: 50%; }
+.bv-dot-suppressed { background: #ff9a1f; border-radius: 0; }
+.bv-dot-selected { z-index: 2; width: 1.9rem; height: 1.9rem; border-color: #fff; box-shadow: 0 0 0 4px #0b0b0b, 0 0 0 8px var(--bv-focus); }
+.bv-path2d { margin: 0; border: 2px solid var(--bv-ink); background: #fff; }
+.bv-path2d svg { display: block; width: 100%; height: auto; max-height: 30rem; }
+.bv-path-line { fill: none; stroke: var(--bv-accent); stroke-width: 5; stroke-linejoin: round; }
+.bv-path-start { fill: #0b0b0b; }
+.bv-dot-svg { cursor: pointer; }
+.bv-dot-svg-spoken { fill: #1fbf4a; stroke: #0b0b0b; stroke-width: 3; }
+.bv-dot-svg-suppressed { fill: #ff9a1f; stroke: #0b0b0b; stroke-width: 3; }
+.bv-dot-svg-selected .bv-dot-svg-spoken, .bv-dot-svg-selected .bv-dot-svg-suppressed { stroke-width: 5; stroke: #0b0b0b; filter: drop-shadow(0 0 4px #ffbf00); }
+.bv-dot-svg:focus-visible { outline: none; }
+.bv-dot-svg:focus-visible circle, .bv-dot-svg:focus-visible rect { stroke: var(--bv-focus); stroke-width: 6; }
+.bv-legend { list-style: none; margin: 0.75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; font-size: 0.95rem; }
+.bv-legend li { display: flex; align-items: center; gap: 0.4rem; }
+.bv-legend-swatch { cursor: default; width: 1rem; height: 1rem; }
+.bv-legend-line { display: inline-block; width: 2rem; height: 0.35rem; }
+.bv-legend-run { background: #d6007a; }
+.bv-legend-path { background: var(--bv-accent); }
+.bv-legend-taught { background: #003a70; border: 1px solid #fff; outline: 1px solid #0b0b0b; }
+.bv-legend-start { display: inline-block; width: 0.8rem; height: 0.8rem; background: #0b0b0b; transform: rotate(45deg); }
 
 .bv-footer { border-top: 3px solid var(--bv-line); padding: 1.5rem 0; background: var(--bv-panel); }
 .bv-footer p { margin: 0; font-size: 1rem; }

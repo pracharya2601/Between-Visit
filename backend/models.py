@@ -192,6 +192,8 @@ class AttemptEvent(BaseDocument):
     depth_prompt: Optional[str] = None
     entity: Optional[str] = None
     for_event_id: Optional[str] = None
+    would_have_said: Optional[str] = None
+    details: Optional[dict] = None
 
 
 class Correction(BaseDocument):

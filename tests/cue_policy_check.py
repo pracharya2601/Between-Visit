@@ -31,6 +31,7 @@ def vis(match=None, on_route=True, ents=(), unusable=False):
     return {"type": "vision", "result": {"checkpoint_match": match, "on_route": on_route, "new_entities": list(ents), "uncertain": False, "unusable": unusable}}
 
 
+NOFRAME = "none"
 ERR, TICK, STOP, RUN = {"type": "vision_error"}, {"type": "tick"}, {"type": "vision_stopped"}, {"type": "running"}
 
 
@@ -38,10 +39,10 @@ def replay(steps, exercise):
     """steps: (t, event, sensors-or-None, frame_t-or-None). Frames are assumed to arrive at t unless frame_t is given."""
     state, out = PolicyState(), []
     for t, event, sensors, frame_t in [(0.0, RUN, None, None)] + steps:
-        s = {**(sensors or {}), "last_frame_at": T0 + (t if frame_t is None else frame_t)}
+        s = {**(sensors or {}), "last_frame_at": None if frame_t == NOFRAME else T0 + (t if frame_t is None else frame_t)}
         cue, state = decide(state, event, exercise, VER, s, T0 + t)
         if cue is not None:
-            out.append((t, cue.text, cue.priority, cue.spoken, cue.suppressed_reason))
+            out.append((t, cue.text or cue.would_have_said or "", cue.priority, cue.spoken, cue.suppressed_reason))
     return out
 
 
@@ -91,6 +92,14 @@ CASES = {
                                                     [(1, "Chair on your right, about 1 metre.", 1, True, None)]),
     "extra: on_route false -> nothing_to_say": (ex(silent=False), [(1, vis(on_route=False), None, None)],
                                                 [(1, "", None, False, "nothing_to_say")]),
+    "JRN-135 grace: no frames 10 s, then phone frames": (ex(), [(t, TICK, None, NOFRAME) for t in range(1, 11)] + [(10.5, vis(), None, None), (11, TICK, None, 10.9), (12, TICK, None, 11.8), (13, TICK, None, 11.8), (14, TICK, None, 11.8)],
+                                                       [(10.5, "", None, False, "on_route_silent"), (14, P, 0, True, None)]),
+    "JRN-136 grace: no frames at all for 17 s": (ex(), [(t, TICK, None, NOFRAME) for t in range(1, 18)],
+                                                 [(15, P, 0, True, None)]),
+    "REQ-318 grace after resume": (ex(), [(1, vis(), None, None), (5, RUN, None, 1)] + [(t, TICK, None, 1) for t in range(6, 22)],
+                                   [(1, "", None, False, "on_route_silent"), (20, P, 0, True, None)]),
+    "Q-49 phone camera starts at 3 s, first results 4.5 s": (ex(), [(1, TICK, None, NOFRAME), (2, TICK, None, NOFRAME)] + [x for t in range(3, 15) for x in ((t, TICK, None, t), (t + 0.5, vis() if t >= 4 else ERR, None, t))],
+                                                             [(3.5, "", None, False, "vision_error")] + [(t + 0.5, "", None, False, "on_route_silent") for t in range(4, 15)]),
     "extra: vision stopped at 30 min": (ex(), [(1, vis(), None, None), (2, STOP, None, None)],
                                         [(1, "", None, False, "on_route_silent"), (2, P, 0, True, None)]),
 }
@@ -185,8 +194,8 @@ async def e2e():
             sending["on"] = False; await asyncio.sleep(3.5)
             print(f"PAUSED: hook logged {p1['logged']}/{p2['logged']}, new cue events {await db.attempt_events.count_documents({'attempt_id': aid, 'type': 'cue'}) - cues_before}, guides {len(guides) - n}")
             print("resume:", requests.post(f"{api}/run/{aid}/resume", headers=k).json()["status"])
-            n = len(guides); await asyncio.sleep(3.5)
-            print(f"NO FRAMES after resume (3.5 s): guides {[(g['text'], g['priority']) for _, g in guides[n:]]}")
+            n, tr = len(guides), time.time(); await asyncio.sleep(17)
+            print(f"NO FRAMES after resume (17 s, grace 15 s): guides {[(g['text'], g['priority'], round(t - tr, 1)) for t, g in guides[n:]]}")
             print("end:", requests.post(f"{api}/run/{aid}/end", headers=k).json()["status"])
             await asyncio.sleep(1.5)
             for t in tasks:

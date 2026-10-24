@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 PAUSE_TEXT = "Vision unavailable, please pause."
 ON_ROUTE_TEXT = "On route."
 NO_FRAMES_S = 2.0
+GRACE_S = 15.0
 NO_USABLE_S = 5.0
 ON_ROUTE_EVERY_S = 20.0
 RATE_LIMIT_S = 3.0
@@ -22,6 +23,7 @@ class PolicyState:
     next_index: int = 0
     pause_sent: bool = False
     armed_at: Optional[float] = None
+    first_frame_at: Optional[float] = None
     last_usable_at: Optional[float] = None
     last_frame_at: Optional[float] = None
     last_spoken_at: Optional[float] = None
@@ -39,6 +41,8 @@ class Cue:
     entity: Optional[str] = None
     route_version: Optional[int] = None
     trigger: Optional[str] = None
+    would_have_said: Optional[str] = None
+    details: Optional[dict] = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -50,7 +54,7 @@ def _latest(*ts):
 
 
 def _silent(reason: str, rv, text: str = "", priority=None, **kw) -> Cue:
-    return Cue(text, priority, False, reason, route_version=rv, **kw)
+    return Cue("", priority, False, reason, route_version=rv, would_have_said=text or None, **kw)
 
 
 def _pause(state: PolicyState, rv, now: float, trigger: str):
@@ -61,19 +65,22 @@ def _pause(state: PolicyState, rv, now: float, trigger: str):
 
 def _speak(state: PolicyState, cue: Cue, now: float, on_spoken):
     if cue.priority != 0 and state.last_spoken_at is not None and now - state.last_spoken_at < RATE_LIMIT_S:
-        return replace(cue, spoken=False, suppressed_reason="rate_limited"), state
+        details = {**(cue.details or {}), "seconds_since_last": round(now - state.last_spoken_at, 2)}
+        return replace(cue, text="", would_have_said=cue.text, spoken=False, suppressed_reason="rate_limited", details=details), state
     return cue, on_spoken(replace(state, last_spoken_at=now))
 
 
 def _since_usable(state: PolicyState, now: float) -> float:
-    base = _latest(state.last_usable_at, state.armed_at)
+    base = _latest(state.last_usable_at, state.first_frame_at)
     return 0.0 if base is None else now - base
 
 
 def _tick(state: PolicyState, rv, now: float):
     if state.pause_sent or state.armed_at is None:
         return None, state
-    if now - _latest(state.last_frame_at, state.armed_at) >= NO_FRAMES_S:
+    if state.first_frame_at is None:
+        return _pause(state, rv, now, "no_frames") if now - state.armed_at >= GRACE_S else (None, state)
+    if now - state.last_frame_at >= NO_FRAMES_S:
         return _pause(state, rv, now, "no_frames")
     if _since_usable(state, now) >= NO_USABLE_S:
         return _pause(state, rv, now, "no_usable_result")
@@ -101,19 +108,25 @@ def _entity_text(entity: dict, sensors: dict) -> str:
     return f"{_label(entity['label'])[1]} {words}{tail}"
 
 
-def _entity_reason(entity: dict, state: PolicyState, known: set, no_repeat: bool, pos, now: float) -> Optional[str]:
+def _entity_reason(entity: dict, state: PolicyState, known: set, no_repeat: bool, pos, now: float) -> Tuple[Optional[str], dict]:
     key = _label(entity["label"])[0]
+    details = {"confidence": entity["confidence"]}
     if entity["confidence"] < MIN_CONFIDENCE:
-        return "low_confidence"
+        return "low_confidence", details
     if key in known:
-        return "known_entity"
+        return "known_entity", details
     prev = state.cued.get(key) if no_repeat else None
     if prev:
         prev_pos, prev_t = prev
-        near = math.hypot(pos[0] - prev_pos[0], pos[1] - prev_pos[1]) < DUP_RADIUS_M if pos and prev_pos else now - prev_t < DUP_WINDOW_S
+        details["seconds_since_last"] = round(now - prev_t, 2)
+        if pos and prev_pos:
+            details["metres_since_last"] = round(math.hypot(pos[0] - prev_pos[0], pos[1] - prev_pos[1]), 2)
+            near = details["metres_since_last"] < DUP_RADIUS_M
+        else:
+            near = now - prev_t < DUP_WINDOW_S
         if near:
-            return "duplicate"
-    return None
+            return "duplicate", details
+    return None, details
 
 
 def _entities(state, entities, exercise, version, sensors, now, rv):
@@ -122,13 +135,13 @@ def _entities(state, entities, exercise, version, sensors, now, rv):
     pos = (sensors["pos_x"], sensors["pos_z"]) if sensors.get("pos_x") is not None and sensors.get("pos_z") is not None else None
     ranked = sorted(entities, key=lambda e: (_distance(e, sensors) or BAND_M[e["distance_band"]], -e["confidence"]))
     reasons = [_entity_reason(e, state, known, no_repeat, pos, now) for e in ranked]
-    for e, reason in zip(ranked, reasons):
+    for e, (reason, details) in zip(ranked, reasons):
         if reason is None:
             key, label = _label(e["label"])
-            cue = Cue(_entity_text(e, sensors), 1, True, None, entity=label, route_version=rv)
+            cue = Cue(_entity_text(e, sensors), 1, True, None, entity=label, route_version=rv, details={"confidence": e["confidence"]})
             return _speak(state, cue, now, lambda s: replace(s, cued={**s.cued, key: (pos, now)}))
     e = ranked[0]
-    return _silent(reasons[0], rv, _entity_text(e, sensors), 1, entity=_label(e["label"])[1]), state
+    return _silent(reasons[0][0], rv, _entity_text(e, sensors), 1, entity=_label(e["label"])[1], details=reasons[0][1]), state
 
 
 def _usable(state, result, exercise, version, sensors, now, rv):
@@ -155,9 +168,11 @@ def decide(state: PolicyState, event: dict, exercise: dict, version: dict, senso
     """event type: running | tick | vision | vision_error | vision_stopped. Returns (Cue or None, new state)."""
     rv = version.get("version")
     state = replace(state, last_frame_at=_latest(state.last_frame_at, sensors.get("last_frame_at")))
+    if state.armed_at is not None and state.first_frame_at is None and state.last_frame_at is not None and state.last_frame_at > state.armed_at:
+        state = replace(state, first_frame_at=state.last_frame_at)
     kind = event["type"]
     if kind == "running":
-        return None, replace(state, armed_at=now)
+        return None, replace(state, armed_at=now, first_frame_at=None)
     if kind == "tick":
         return _tick(state, rv, now)
     if kind == "vision_stopped":
@@ -165,7 +180,7 @@ def decide(state: PolicyState, event: dict, exercise: dict, version: dict, senso
     if kind == "vision_error":
         if _since_usable(state, now) >= NO_USABLE_S:
             return _pause(state, rv, now, "no_usable_result")
-        return _silent("vision_error", rv), state
+        return _silent("vision_error", rv, details={"error": event.get("reason")}), state
     result = event.get("result") or {}
     if result.get("unusable"):
         return _pause(state, rv, now, "unusable")
