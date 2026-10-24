@@ -153,6 +153,14 @@ class AttemptEvent(BaseDocument):
     route_version: Optional[int] = None
     source: Optional[Literal["glasses", "phone"]] = None
     reason: Optional[str] = None
+    pos_x: Optional[float] = None
+    pos_z: Optional[float] = None
+    heading_deg: Optional[float] = None
+    ar_tracking: Optional[str] = None
+    depth_left: Optional[float] = None
+    depth_centre: Optional[float] = None
+    depth_right: Optional[float] = None
+    depth_prompt: Optional[str] = None
 
 
 class Correction(BaseDocument):

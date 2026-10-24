@@ -43,7 +43,11 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-32 | Vision loop per running attempt: newest frame only, ≤1/s, skip while busy, Claude Haiku 4.5 (one config setting), route memory as text, JSON result | system | 6 |
 | F-33 | Log "vision" / "vision_error" attempt_events; 8 s timeout; stop after 30 min of running | system | 6 |
 | F-34 | GET /api/attempts/{id}/events (newest first) | practitioner | 6 |
-| F-8 | Speaking vision cues (step 7), review/corrections UI: later | practitioner | later |
+| F-35 | "DPT1" LiDAR depth frames on the ingest socket: parse, validate, never to vision/never stored | device | 7 |
+| F-36 | {"type":"phone"} lines: newest ar_tracking, ar_pose, heading_deg, has_lidar per stream | device | 7 |
+| F-37 | Depth↔phone pairing ±60 ms; left/centre/right median depth; added to vision events and the Claude prompt | system | 7 |
+| F-38 | /device-test shows pose, depth L/C/R, depth-frame count | practitioner | 7 |
+| F-8 | Speaking vision cues, route from walk, review/corrections UI: later | practitioner | later |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -52,7 +56,8 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 4: Exercise builder + assignment → F-19..F-23. [requirement](phase4/requirement.md) · [journeys](phase4/journeys.md)
 - Phase 5: Client run page → F-24..F-30. [requirement](phase5/requirement.md) · [journeys](phase5/journeys.md)
 - Phase 6: Vision analysis (no speaking) → F-31..F-34. [requirement](phase6/requirement.md) · [journeys](phase6/journeys.md)
-- Phase 7 (planned by user): speaking vision cues.
+- Phase 7: Phone sensors from GlassCam (LiDAR depth + AR pose) → F-35..F-38. [requirement](phase7/requirement.md) · [journeys](phase7/journeys.md)
+- Next (planned by user): speaking vision cues; route created from a GlassCam walk (+ the deferred checkpoint-2 match check).
 - Later phases: to be defined with the user.
 
 ## UI/UX Rules

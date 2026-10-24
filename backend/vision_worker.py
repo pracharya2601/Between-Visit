@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from db import db
 from models import Attempt, AttemptEvent
+from sensors import sensors_for
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,15 @@ def shrink(frame: bytes) -> bytes:
     return out.getvalue()
 
 
-def build_prompt(version: dict, last_match: Optional[str]) -> str:
+def depth_line(snap: dict) -> str:
+    vals = [snap["depth_left"], snap["depth_centre"], snap["depth_right"]]
+    if all(v is None for v in vals):
+        return "Depth unavailable: estimate distance_band from the image."
+    left, centre, right = ("no reading" if v is None else f"{v:.2f}" for v in vals)
+    return f"Depth (LiDAR, metres): left {left}, centre {centre}, right {right}. Use these for distance_band: near < 1.5, mid 1.5–4, far > 4."
+
+
+def build_prompt(version: dict, last_match: Optional[str], depth_text: str) -> str:
     cps = sorted(version.get("checkpoints", []), key=lambda c: c["order"])
     cp_lines = "\n".join(f"{c['order']}. {c['name']}: {c['landmark_text']}" for c in cps) or "(none)"
     known = version.get("known_entities") or []
@@ -111,7 +120,8 @@ def build_prompt(version: dict, last_match: Optional[str]) -> str:
         f"Route memory (version {version.get('version')}).\n"
         f"Checkpoints in order (name: landmark):\n{cp_lines}\n"
         f"Known entities:\n{known_lines}\n"
-        f"Last matched checkpoint: {last_match or 'none yet'}\n\n"
+        f"Last matched checkpoint: {last_match or 'none yet'}\n"
+        f"{depth_text}\n\n"
         "Look at the frame. Reply with JSON only, no prose and no code fences, exactly this shape:\n"
         '{"checkpoint_match": <exact checkpoint name from the list, or null>, "on_route": <true|false>, '
         '"new_entities": [{"label": <short noun>, "relation": "left"|"right"|"ahead", "distance_band": "near"|"mid"|"far", "confidence": <0 to 1>}], '
@@ -178,6 +188,8 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     names = [c["name"] for c in version.get("checkpoints", [])]
     last = await db.attempt_events.find_one({"attempt_id": attempt_id, "type": "vision", "checkpoint": {"$ne": None}}, {"_id": 0, "checkpoint": 1}, sort=[("seq", -1)])
     model = os.environ["VISION_MODEL"]
+    snap = sensors_for(attempt_id).snapshot()
+    depth_text = depth_line(snap)
     t0 = time.monotonic()
     ms = lambda: int((time.monotonic() - t0) * 1000)  # noqa: E731
     try:
@@ -185,7 +197,7 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     except Exception:
         return await log(attempt_id, "vision_error", reason="not_an_image", latency_ms=ms(), model=model, source=source)
     try:
-        reply = await asyncio.wait_for(ask_model(model, build_prompt(version, last and last["checkpoint"]), jpeg), timeout)
+        reply = await asyncio.wait_for(ask_model(model, build_prompt(version, last and last["checkpoint"], depth_text), jpeg), timeout)
     except asyncio.TimeoutError:
         return await log(attempt_id, "vision_error", reason="timeout", latency_ms=ms(), model=model, source=source)
     except Exception as exc:
@@ -196,4 +208,5 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     await log(
         attempt_id, "vision", result=result.model_dump(), latency_ms=ms(), model=model, route_version=version.get("version"),
         source=source, checkpoint=result.checkpoint_match, uncertain=result.uncertain, spoken=False,
+        depth_prompt=depth_text, **snap,
     )

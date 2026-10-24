@@ -10,6 +10,7 @@ from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, WebSocket
 from pydantic import BaseModel, StringConstraints, ValidationError
 
+import sensors
 import vision_worker
 from db import db
 from models import Attempt
@@ -115,6 +116,17 @@ class StreamStatus(BaseModel):
     glasses_frames: int
     phone_frames: int
     seconds_since_glasses_frame: Optional[float]
+    pose_x: Optional[float]
+    pose_z: Optional[float]
+    heading_deg: Optional[float]
+    ar_tracking: Optional[str]
+    has_lidar: Optional[bool]
+    depth_left: Optional[float]
+    depth_centre: Optional[float]
+    depth_right: Optional[float]
+    depth_frames_received: int
+    depth_dropped: int
+    depth_unpaired: int
 
 
 async def find_attempt(**query) -> Optional[Attempt]:
@@ -129,9 +141,17 @@ async def require_attempt(attempt_id: str) -> Attempt:
     return attempt
 
 
-def parse_motion(text: str) -> Optional[dict]:
+def parse_json(text: str) -> dict:
     try:
-        return Motion(**json.loads(text)).model_dump()
+        obj = json.loads(text)
+    except ValueError:
+        return {}
+    return obj if isinstance(obj, dict) else {}
+
+
+def parse_motion(obj: dict) -> Optional[dict]:
+    try:
+        return Motion(**obj).model_dump()
     except (ValueError, TypeError, ValidationError):
         return None
 
@@ -162,13 +182,19 @@ async def ingest(ws: WebSocket, stream_id: str):
                 break
             data = msg.get("bytes")
             if data is not None:
-                if len(data) > MAX_FRAME_BYTES:
+                if data[:4] == sensors.DEPTH_MAGIC:
+                    sensors.on_depth(attempt.id, data)
+                elif len(data) > MAX_FRAME_BYTES:
                     state.frames_dropped += 1
                 else:
                     state.accept_frame(len(data))
                     vision_worker.offer(attempt.id, data, "glasses")
                 continue
-            motion = parse_motion(msg.get("text") or "")
+            obj = parse_json(msg.get("text") or "")
+            if obj.get("type") == "phone":
+                sensors.on_phone_line(attempt.id, obj)
+                continue
+            motion = parse_motion(obj)
             if motion:
                 state.held_motion = motion
     except Exception:
@@ -209,6 +235,9 @@ async def phone_frame(
 async def stream_status(attempt_id: str):
     await require_attempt(attempt_id)
     s = state_for(attempt_id)
+    sn = sensors.sensors_for(attempt_id)
+    x, z = sn.pose_xz()
+    depth = sn.depth or {}
     since = round(time.time() - s.last_frame_at, 1) if s.last_frame_at else None
     return StreamStatus(
         live=s.ws is not None,
@@ -220,6 +249,17 @@ async def stream_status(attempt_id: str):
         glasses_frames=s.glasses_frames,
         phone_frames=s.phone_frames,
         seconds_since_glasses_frame=s.seconds_since_glasses_frame(),
+        pose_x=x,
+        pose_z=z,
+        heading_deg=sn.phone.get("heading_deg"),
+        ar_tracking=sn.phone.get("ar_tracking"),
+        has_lidar=sn.phone.get("has_lidar"),
+        depth_left=depth.get("left"),
+        depth_centre=depth.get("centre"),
+        depth_right=depth.get("right"),
+        depth_frames_received=sn.depth_frames_received,
+        depth_dropped=sn.depth_dropped,
+        depth_unpaired=sn.depth_unpaired,
     )
 
 

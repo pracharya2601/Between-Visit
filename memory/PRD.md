@@ -56,5 +56,12 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Check script: tests/vision_check.py (with tests/run_check_data.py setup/cleanup).
 - DEFERRED: REQ-206 checkpoint-2 check, to a later step where the route is created automatically from a GlassCam walk. Keep tests/vision_check.py for it. Phase 6 closed.
 
+## Phase 7 implemented (2026-10-24): phone sensors from GlassCam (depth + pose)
+- backend/sensors.py: DPT1 depth parsing (36-byte LE header, u16 mm body, numpy) is branched before the picture path in ingest. Drops (wrong length, format, zero size, >1 MB) count as depth_dropped; unpaired (no phone line within ±60 ms) as depth_unpaired. Summary = median of non-zero depths over the middle third of rows for the L/C/R column thirds (null if none). Only the newest summary is kept.
+- Phone lines ({"type":"phone"}): field-wise validation (an invalid field keeps the previous value), extras ignored, about 1 s of ts kept for pairing; never treated as motion.
+- Vision events gain pos_x, pos_z, heading_deg, ar_tracking, depth_left/centre/right (null when older than 1 s) + depth_prompt (the exact depth text sent to Claude, or "Depth unavailable…").
+- /device-test status shows pose, heading, tracking, LiDAR, depth L/C/R and the depth counters. The run API has no pose/depth.
+- Check: tests/depth_check.py (with run_check_data.py setup/cleanup).
+
 ## Backlog
 - P1: Later-phase features (routes, checkpoints, exercises with key shown once at assignment, attempts, events, corrections), to be defined with the user.
