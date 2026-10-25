@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+
+function Aim({ position, target }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    if (position) camera.position.set(...position);
+    camera.lookAt(...target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera]);
+  return null;
+}
 
 const PLANE_STYLE = {
   floor: { color: "#8a8a8a", opacity: 0.55 },
@@ -66,7 +76,7 @@ function MarkerLabel({ n }) {
   return <sprite position={[0, 0.7, 0]} scale={[0.7, 0.7, 0.7]}><spriteMaterial map={texture} depthTest={false} /></sprite>;
 }
 
-export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactive = false, testId = "teach-scene", overlay = null, controls = "orbit", orbitTarget, hint, children }) {
+export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactive = false, testId = "teach-scene", overlay = null, controls = "orbit", orbitTarget, view, hint, children }) {
   const [positions, setPositions] = useState(null);
   const [colors, setColors] = useState(null);
   useEffect(() => {
@@ -102,6 +112,7 @@ export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactiv
         ))}
         {children}
         {controls === "orbit" && <OrbitControls target={orbitTarget || target} makeDefault />}
+        {controls === "none" && <Aim position={view?.position} target={view?.target || target} />}
       </Canvas>
       {overlay}
       <p className="bv-hint" aria-hidden="true">{hint ?? "Drag to orbit, pinch or scroll to zoom."}</p>

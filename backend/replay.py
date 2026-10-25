@@ -14,7 +14,9 @@ from exercises import create_attempt
 from ingest import state_for
 from machine import checkpoint_positions, machine_entity
 from models import AttemptEvent, now_iso
-from review import ROUTINE, build_path, build_timeline, known_for_review, memory_response
+from review import ROUTINE, build_path, build_timeline, known_for_review, load_memory, memory_response
+
+LANDING_POINTS = 15_000
 from sensors import SENSORS, sensors_for
 from storage import get_object
 
@@ -211,6 +213,37 @@ async def replay_state(attempt_id: str):
         "entities": [{"label": e["entity"]["label"], "side": e["entity"]["side"], "position": e["entity"]["position"]} for e in ents],
         "review_path": f"/review/{attempt_id}" if a["status"] == "ended" else None,
     }
+
+
+@router.get("/demo/scene")
+async def demo_scene():
+    """Public, read-only data for the landing loop: stored model, synthetic trail, v2 chair, review rows source. No attempts, no AI."""
+    route = await demo_route()
+    v2 = await db.route_versions.find_one({"route_id": route["id"], "version": route["current_version"]}, {"_id": 0}) or {}
+    loaded = await load_memory(v2["memory_id"]) if v2.get("memory_id") else None
+    rec = await db.recordings.find_one({"route_id": route["id"], "kind": "synthetic", "ready": True}, {"_id": 0, "frames": 1})
+    if not loaded or not rec:
+        raise HTTPException(status_code=404, detail=NO_RECORDING)
+    mem, meta = loaded
+    pos = await checkpoint_positions(v2)
+    chair = next((e for e in v2.get("known_entities") or [] if isinstance(e, dict) and e.get("label") == "chair" and e.get("position")), None)
+    ex = await db.exercises.find_one({"route_id": route["id"]}, {"_id": 0, "id": 1})
+    att = await db.attempts.find_one({"exercise_id": ex and ex["id"], "replay": {"$ne": True}, "status": "ended"}, {"_id": 0, "id": 1}, sort=[("created_at", 1)])
+    return {
+        "scene": {"points": mem["point_count"], "points_sent": min(mem["point_count"], LANDING_POINTS), "planes": meta.get("planes", []), "trail": [p[:3] for p in meta.get("trail") or []],
+                  "metres_walked": mem["trail_m"], "rgb": bool(mem.get("colors_path")),
+                  "checkpoints": [{"id": c["id"], "order": c["order"], "name": c["name"], "position": [pos[c["id"]]["x"], 0.0, pos[c["id"]]["z"]] if pos.get(c["id"]) else None} for c in v2.get("checkpoints", [])]},
+        "poses": [[f["pose"]["x"], f["pose"]["z"], f["pose"].get("heading_deg") or 0, f["t_offset_ms"]] for f in rec["frames"] if f["pose"].get("x") is not None],
+        "chair": {"label": "chair", "pos": chair["position"]} if chair else None,
+        "review_attempt_id": att and att["id"],
+    }
+
+
+@router.get("/demo/points")
+async def demo_points(colors: bool = False):
+    route = await demo_route()
+    v2 = await db.route_versions.find_one({"route_id": route["id"], "version": route["current_version"]}, {"_id": 0, "memory_id": 1}) or {}
+    return await memory_response(v2, colors, cap=LANDING_POINTS)
 
 
 @router.get("/replays/{attempt_id}/points")

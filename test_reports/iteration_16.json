@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only validation of Between Visit Phase 16 landing redesign. All 11 requested checks pass: hero text/sizes, button navigation, lazy 3D with alternating caption, no POSTs (only GETs to /api/demo/scene, /api/demo/points[?colors=true], /api/attempts/48461db6-54af-4344-a634-30753164eb85/review), reduced-motion and no-WebGL fallbacks, stats band, how-it-works cards, specialist rows order/content, mobile stacking at 390px, keyboard tab order & skip link, and unchanged /demo /workspace /research /review/... pages.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "detailed_results": {
+    "h1": {"text": "Route practice between visits, reviewed by the specialist.", "size_1920": "70.08px", "size_1440": "58.56px", "count": 1, "within_clamp_56_72": true},
+    "subline": "Teach a route once by walking it. Your client practises with smart glasses. You review every cue.",
+    "hero_buttons": {"try_demo_href": "/demo", "workspace_href": "/workspace", "both_navigate": true},
+    "hero_visual": {"data_mode_after_load": "3d", "canvas_present": true, "pointer_events": "none", "tab_never_enters": true, "card_aria_hidden": "true", "cards_seen": ["Spoken: Chair ahead, about 2 metres.", "Held back: Known, chair confirmed in v2"], "alternation_timing_s_approx": 18},
+    "network": {"api_requests": ["GET /api/demo/scene", "GET /api/demo/points", "GET /api/demo/points?colors=true", "GET /api/attempts/48461db6-54af-4344-a634-30753164eb85/review"], "post_count": 0},
+    "reduced_motion": {"mode": "still", "still_rendered": true, "canvas_count": 0, "card": "Held back: Known, chair confirmed in v2", "alt_len": 262},
+    "no_webgl": {"mode": "still", "still_rendered": true, "canvas_count": 0, "card": "Held back: Known, chair confirmed in v2"},
+    "stats": {"cdc_href": "https://www.cdc.gov/vision-health-data/prevalence-estimates/vision-loss-prevalence.html", "acvrep_href": "https://www.acvrep.org/newsitem?id=97", "ratio_text_exact": true, "research_href": "/research"},
+    "steps": [
+      {"i": 1, "title": "Teach by walking", "loading": "lazy", "alt_len": 125},
+      {"i": 2, "title": "Client practises", "loading": "lazy", "alt_len": 153},
+      {"i": 3, "title": "Review and correct (memory v2)", "loading": "lazy", "alt_len": 129}
+    ],
+    "specialist_rows": [
+      {"time": "0:03", "category": "held_back", "reason": "Held back: another cue 1.5 s earlier"},
+      {"time": "0:09", "category": "spoken", "text": "Chair ahead, close."},
+      {"time": "0:11", "category": "held_back", "reason": "Not repeated: already said 0.9 m ago"}
+    ],
+    "open_review_href": "/review/48461db6-54af-4344-a634-30753164eb85",
+    "mobile_390": {"horizontal_scroll": false, "order": "h1(141) -> buttons(575) -> hero-visual(727)"},
+    "tab_order_exact": ["skip-to-content-link", "brand-home-link", "landing-try-demo-button", "landing-workspace-button", "landing-cdc-link", "landing-acvrep-link", "landing-research-link", "landing-open-review-link", "landing-closing-demo-button"],
+    "skip_link_targets_main": true,
+    "unchanged_pages_render": {"/demo": 200, "/workspace": 200, "/research": 200, "/review/48461db6-54af-4344-a634-30753164eb85": 200}
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: Step 1 h3 renders '1Teach by walking' with no visible separator between the aria-hidden number badge and title; CSS likely handles spacing but worth confirming visually in production builds.",
+    "SpecialistRows renders row text as `Would have said: {text}` for held-back items; the acceptance spec examples use the reason-only format ('Held back: another cue 1.5 s earlier'). Current output includes both the full would-have-said text and the reason — richer than requested, acceptable but worth confirming with design.",
+    "HeroVisual: on failure path card is set to CARDS[1] (held-back) which matches spec, and the 3D variant doesn't fetch /api/demo/points if WebGL unavailable — good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "none required",
+  "seed_data_creation": "none; no POSTs were made (attempts count unchanged as required)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 16 landing page is fully compliant with the spec. Hero 3D loop takes ~18s per pass under headless software WebGL; use 65s timeout when checking card alternation. Reduced-motion & no-WebGL fallbacks both show the held-back card by default (CARDS[1]). Specialist rows depend on /api/demo/scene returning review_attempt_id; if backend changes, SpecialistRows will hide gracefully."
+}

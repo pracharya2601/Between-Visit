@@ -227,14 +227,14 @@ async def attempt_review(attempt_id: str):
     return {"header": header, "timeline": items, "path": await build_path(doc, version, items, entities)}
 
 
-async def memory_response(version: dict, colors: bool = False) -> Response:
+async def memory_response(version: dict, colors: bool = False, cap: int = BROWSER_POINTS) -> Response:
     """Browser-capped points (float32 xyz) or matching per-point RGB (uint8), same subsampling."""
     mem = await db.route_memories.find_one({"id": version.get("memory_id")}, {"_id": 0}) if version.get("memory_id") else None
     if not mem or (colors and not mem.get("colors_path")):
         raise HTTPException(status_code=404, detail="No 3D memory for this route version")
     arr = np.frombuffer(await get_object(mem["colors_path" if colors else "points_path"]), dtype="u1" if colors else "<f4").reshape(-1, 3)
-    if len(arr) > BROWSER_POINTS:
-        arr = arr[np.linspace(0, len(arr) - 1, BROWSER_POINTS).astype(np.int64)]
+    if len(arr) > cap:
+        arr = arr[np.linspace(0, len(arr) - 1, cap).astype(np.int64)]
     return Response(content=arr.tobytes(), media_type="application/octet-stream", headers={"X-Point-Count": str(len(arr))})
 
 

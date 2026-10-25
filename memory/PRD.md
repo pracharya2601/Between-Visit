@@ -122,3 +122,8 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Migration `phase15-synthetic-model`: 38,540-point coloured corridor (floor, walls, left handrail, tactile strip, desk, chair at (0.6,-5.0)) on v1+v2; optional per-point RGB (`colors_path`); v2 chair position set; recording frame 2 centre depth 3.1 m.
 - Review for replays: same 3D view with RGB + "Synthetic 3D model" label.
 - Known gap: headless fps 13.5 (software WebGL); real-GPU fps unmeasured.
+
+## Phase 16 — Landing redesign (2026-10-25)
+- "/" only: navy hero (h1 ~70 px clamp, subline, Try the demo / Open the practice workspace) + lazy 3D corridor loop (15k points, scripted v1 spoken / v2 held-back passes from stored data, no attempts/AI), still-image fallback for reduced motion / no WebGL / failure.
+- Stats band (7.1M CDC, 4,068 ACVREP, 1,700+ ratio, See the research), How it works with real app stills (WebP 15–30 KB, lazy), "What the specialist sees" live rows from att-iiri, closing band.
+- New public read-only endpoints: GET /api/demo/scene, GET /api/demo/points (15k cap). Scene3D gained optional `view` (fixed camera aim).
