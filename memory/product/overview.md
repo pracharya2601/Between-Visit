@@ -110,6 +110,7 @@ None in Phase 1. No auth.
 - Backend down or empty data → the home page shows "Couldn't load practice data".
 
 ## Seed Data
+- OPEN ITEM before real use: add practitioner login. Live views (/live, live-frame), review, notes and the workspace are unauthenticated today (synthetic data only).
 - Rule (from Phase 5): any data created for checks is deleted afterwards. Object storage can't delete files (405), so check photos must be made unservable and reported.
 - Practice: "Bay Mobility Practice"
 - Practitioner: "J. Rivera (synthetic)", role "O&M specialist"

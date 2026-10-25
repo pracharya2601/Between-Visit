@@ -152,3 +152,9 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - POST /api/checkpoints/{id}/suggest-distinct: Sonnet with this photo + the other texts (distinct prompt), unapproves; failure -> "AI suggestion unavailable"
 - migrations.phase19_demo_landmarks: demo frames 1/8/12 as photos + 3 distinct texts on checkpoints, v1, v2 (old photos unservable)
 - Distance guard (REQ-605..608, approved): picture matches more than PICTURE_MAX_DIST_M=3.0 m from the matched checkpoint's position (fresh, aligned pose) are ignored and logged as a routine 'picture_too_far' silence; off without positions / stale pose / unaligned scan run. Demo chair story restored
+
+## Phase 20 (Oct 2026) - live 3D while walking
+- Teach walk: /teach/{id}/points + /scene readable while active (scene.walker), GET /teach/{id}/live-frame (newest ring frame, no-store, 204); TeachLive3D panel (scene 1 s, points 2 s, live picture)
+- Watch live: backend/live.py GET /attempts/{id}/live (three shape via replay.three_for + shared alignment; no-memory routes: live DPT1 points capped 100k or a floor grid), /live/points (<=50k), /live-frame (newest frame in memory, only running/paused); dropped at run end; 404 for replays
+- Frontend /live/:id (LiveScreen), Watch live link on running/paused attempts. Unauthenticated for now (synthetic only); login before real use
+- Checks: tests/sim_live_run.py (demo/depth/nodepth/cleanup), teach_walk_sim.py STEP_S

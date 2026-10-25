@@ -26,6 +26,7 @@ from teach import expire_idle_sessions
 from teach import router as teach_router
 from scan import router as scan_router
 from similarity import router as similarity_router
+from live import router as live_router
 from scan import sweep_scan_files
 from models import (
     COLLECTIONS,
@@ -161,6 +162,7 @@ app.include_router(machine_router)
 app.include_router(replay_router)
 app.include_router(scan_router)
 app.include_router(similarity_router)
+app.include_router(live_router)
 if os.environ.get("CUE_TEST_HOOK") == "1":
     from test_hooks import router as test_hooks_router
     app.include_router(test_hooks_router)

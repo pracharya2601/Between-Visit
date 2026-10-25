@@ -186,12 +186,14 @@ async def ingest(ws: WebSocket, stream_id: str):
                 break
             data = msg.get("bytes")
             if data is not None:
+                import live
                 if data[:4] == sensors.DEPTH_MAGIC:
-                    sensors.on_depth(attempt.id, data)
+                    live.on_depth(attempt.id, sensors.on_depth(attempt.id, data))
                 elif len(data) > MAX_FRAME_BYTES:
                     state.frames_dropped += 1
                 else:
                     state.accept_frame(len(data))
+                    live.on_frame(attempt.id, data)
                     vision_worker.offer(attempt.id, data, "glasses")
                 continue
             obj = parse_json(msg.get("text") or "")
@@ -232,7 +234,9 @@ async def phone_frame(
         body.extend(chunk)
     if size == 0:
         raise HTTPException(status_code=422, detail="Empty frame")
+    import live
     state.accept_frame(size, {"src": "phone", "heading": heading, "steps": steps}, src="phone")
+    live.on_frame(attempt.id, bytes(body))
     vision_worker.offer(attempt.id, bytes(body), "phone")
     if heading is not None and steps is not None and MOTION_LAST.get(attempt.id) != steps:
         sample = {"t": now_iso(), "heading": round(heading, 1), "steps": steps}

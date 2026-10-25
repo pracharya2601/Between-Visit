@@ -32,6 +32,9 @@ Goal: the practitioner watches a walk live in 3D on their Mac: the teach map bui
 ## Access
 - REQ-631 [always] The live endpoints shall follow the decision recorded in "Access decision" below.
 
+## Access decision (user, Phase 20)
+- REQ-632 [always] For now (synthetic clients only, no login) the live endpoints stay unauthenticated, reached by long random attempt/session ids. They serve frames only while a teach session is active or a run is running/paused, with Cache-Control: no-store. A login is required before any real use (recorded as an open item in the overview).
+
 ## Quality requirements
 ```
 Q-85 Tag: Live.Latency

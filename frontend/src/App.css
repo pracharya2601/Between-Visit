@@ -375,3 +375,9 @@ textarea.bv-input { resize: vertical; }
 /* Phase 19: distinct-landmark warning */
 .bv-alike { margin: 0.5rem 0 !important; padding: 0.6rem 0.8rem; border-left: 4px solid #b45309; background: #fff7e6; color: #5a2d00; font-weight: 700; }
 .bv-alike-empty { margin: 0 !important; min-height: 0; }
+
+/* Phase 20: live 3D */
+.bv-live-picture { border: 2px solid var(--bv-line); background: #111; min-height: 140px; display: flex; align-items: center; justify-content: center; color: #ddd; margin-bottom: 1rem; }
+.bv-live-picture img { width: 100%; max-width: 360px; height: auto; display: block; }
+.bv-teach-live3d-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 760px) { .bv-teach-live3d-grid { grid-template-columns: 1fr; } }

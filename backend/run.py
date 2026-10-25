@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, StringConstraints
 
 import cue_runner
+import live
 import recording
 from db import db
 from ingest import key_matches, push_guide, state_for
@@ -188,8 +189,11 @@ async def run_transition(attempt_id: str, action: Literal["start", "pause", "res
     await log_event(a.id, action)
     if target == "running":
         await cue_runner.on_running(a.id)
+        await live.on_running(a.id)
     else:
         cue_runner.on_stopped(a.id, ended=target == "ended")
+        if target == "ended":
+            live.drop(a.id)
     if target == "ended" and a.record_demo:
         await recording.on_ended(a.id)
     return run_state(await get_attempt(a.id))

@@ -71,6 +71,8 @@ async def walk(name="Teach sim corridor (synthetic)"):
     print("empty name:", requests.post(f"{API}/teach", json={"route_name": " "}, headers=UA).status_code)
     s = requests.post(f"{API}/teach", json={"route_name": name}, headers=UA).json()
     print("session:", s["stream_id"], "key present:", bool(s["key"]), "| status:", get(f"/teach/{s['id']}/status").json())
+    Path("/tmp/teach_live_sid").write_text(s["id"])
+    step_s = float(__import__("os").environ.get("STEP_S", "0.1"))
     try:
         async with websockets.connect(f"{WSS}/ws/ingest/{s['stream_id']}?key=wrong") as ws:
             await ws.recv(); await ws.recv()
@@ -96,7 +98,7 @@ async def walk(name="Teach sim corridor (synthetic)"):
             await ws.send(depth_frame(M, ts + 10))
             if i % 2 == 0 or i == corner_i:
                 await ws.send(PERSON if i == corner_i or i >= n - 9 else EMPTY)
-            await asyncio.sleep(max(0, t0 + (i + 1) * 0.1 - time.time()))
+            await asyncio.sleep(max(0, t0 + (i + 1) * step_s - time.time()))
         await asyncio.sleep(1.5)
         st = get(f"/teach/{s['id']}/status").json()
         print("after walk:", st)

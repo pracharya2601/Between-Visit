@@ -399,21 +399,45 @@ def require_review(s: TeachSession) -> TeachMap:
     return MAPS.get(s.id) or TeachMap()
 
 
+def require_live_or_review(s: TeachSession) -> TeachMap:
+    """Points/scene are also readable while the walk is active (live map on the teach page)."""
+    if s.status == "active":
+        return MAPS.get(s.id) or TeachMap()
+    return require_review(s)
+
+
+def walker(session_id: str) -> Optional[dict]:
+    snap = sensors.sensors_for(session_id).snapshot()
+    pose = sensors.sensors_for(session_id).phone.get("ar_pose")
+    if snap.get("pos_x") is None or not pose:
+        return None
+    return {"x": pose[12], "y": pose[13], "z": pose[14], "heading_deg": snap.get("heading_deg")}
+
+
+@router.get("/teach/{session_id}/live-frame")
+async def teach_live_frame(session_id: str):
+    s = await get_session(session_id)
+    m = MAPS.get(s.id)
+    if s.status != "active" or not m or not m.ring:
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+    return Response(content=m.ring[-1][1], media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
 @router.get("/teach/{session_id}/points")
 async def teach_points(session_id: str):
-    m = require_review(await get_session(session_id))
+    m = require_live_or_review(await get_session(session_id))
     pts = np.asarray(m.points, dtype="<f4").reshape(-1, 3)
     if len(pts) > BROWSER_POINTS:
         pts = pts[np.linspace(0, len(pts) - 1, BROWSER_POINTS).astype(np.int64)]
-    return Response(content=pts.tobytes(), media_type="application/octet-stream", headers={"X-Point-Count": str(len(pts))})
+    return Response(content=pts.tobytes(), media_type="application/octet-stream", headers={"X-Point-Count": str(len(pts)), "Cache-Control": "no-store"})
 
 
 @router.get("/teach/{session_id}/scene")
 async def teach_scene(session_id: str):
     s = await get_session(session_id)
-    m = require_review(s)
+    m = require_live_or_review(s)
     cps = await route_checkpoints(s.route_id)
-    return {
+    return {"status": s.status, "walker": walker(s.id) if s.status == "active" else None,
         "points": len(m.points), "points_sent": min(len(m.points), BROWSER_POINTS), "metres_walked": round(m.cum[-1] if m.cum else 0.0, 2),
         "planes": m.planes, "trail": [p[:3] for p in m.trail],
         "checkpoints": [{"id": c.id, "order": c.order, "name": c.name, "position": c.position} for c in cps],

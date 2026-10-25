@@ -58,7 +58,7 @@ function CameraRig({ pos, heading }) {
   return null;
 }
 
-export default function Replay3D({ three, pointsBase, freeLook, reached = [], testId = "replay-scene", animate = true }) {
+export default function Replay3D({ three, pointsBase, freeLook, reached = [], testId = "replay-scene", animate = true, pointsKey = null, what = "the demo corridor with the replay's trail" }) {
   const reduced = useReducedMotion();
   const trail = three.run_trail;
   const now = trail.length ? trail[trail.length - 1] : [0, three.floor_y, 0];
@@ -66,12 +66,13 @@ export default function Replay3D({ three, pointsBase, freeLook, reached = [], te
   const spoken = three.dots.filter((d) => d.category === "spoken").length;
   const held = three.dots.length - spoken;
   const follow = animate && !reduced && !freeLook;
-  const label = `3D view of the demo corridor with the replay's trail, checkpoints reached: ${reached.join(", ") || "none yet"}, ${spoken} spoken cue dots, ${held} held-back cue dots and ${three.entities.length} known objects.`;
+  const label = `3D view of ${what}, checkpoints reached: ${reached.join(", ") || "none yet"}, ${spoken} spoken cue dots, ${held} held-back cue dots and ${three.entities.length} known objects.`;
   return (
     <div className="bv-replay-3d" data-testid={`${testId}-wrap`}>
-      <Scene3D scene={three.scene} pointsUrl={`${pointsBase}`} colorsUrl={three.scene.rgb ? `${pointsBase}?colors=true` : null} label={label} interactive={freeLook} reached={reached}
+      <Scene3D scene={three.scene} pointsUrl={pointsKey ? `${pointsBase}?k=${pointsKey}` : pointsBase} colorsUrl={three.scene.rgb ? `${pointsBase}?colors=true` : null} label={label} interactive={freeLook} reached={reached}
         testId={testId} controls={freeLook || !animate ? "orbit" : "none"} orbitTarget={freeLook ? [now[0], 0, now[2]] : undefined}
         hint={freeLook || !animate ? "Drag to orbit, pinch or scroll to zoom." : reduced ? "Fixed overview (reduced motion)." : "Camera follows the walk. Turn on Free look to orbit."}>
+        {three.scene.grid && <gridHelper args={[40, 40, "#9a9a9a", "#4a4a4a"]} position={[trail[0]?.[0] ?? 0, three.floor_y, trail[0]?.[2] ?? 0]} />}
         {trail.length > 1 && <Line points={trail} color="#d6007a" lineWidth={5} />}
         {three.dots.map((d) => (
           <mesh key={d.id} position={[d.pos[0], y, d.pos[1]]} data-testid={`replay-dot-${d.id}`}>

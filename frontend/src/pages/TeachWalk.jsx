@@ -7,6 +7,7 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useApi } from "@/hooks/useApi";
 import CopyField from "@/components/CopyField";
 import TeachLive from "@/components/teach/TeachLive";
+import TeachLive3D from "@/components/teach/TeachLive3D";
 
 const ENDED = { cancelled: "This walk was cancelled.", expired: "This walk expired after 2 hours without activity." };
 
@@ -60,6 +61,7 @@ export default function TeachWalk() {
             <CopyField id="teach-stream-id" label="Stream ID" value={s.stream_id} />
             <CopyField id="teach-key" label="Key" value={s.key || ""} />
           </section>
+          <TeachLive3D sessionId={id} />
           <TeachLive sessionId={id} />
           <button type="button" className="bv-btn bv-run-btn bv-run-start" disabled={busy} onClick={() => act("finish", () => navigate(`/teach/${id}/review`))} data-testid="teach-finish-button">Finish walk</button>
           {confirmCancel ? (

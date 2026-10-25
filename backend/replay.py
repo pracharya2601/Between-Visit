@@ -177,6 +177,22 @@ async def replay_attempt(attempt_id: str) -> dict:
     return doc
 
 
+async def three_for(a: dict, v: dict, route_id, heading):
+    """The 3D 'three' shape (saved model + shared alignment) for a run or replay; (None, items, scan) without a 3D model."""
+    events = await db.attempt_events.find({"attempt_id": a["id"]}, {"_id": 0}).sort("seq", 1).to_list(5000)
+    scan = await is_scan(v) if v else False
+    started = a.get("started_at")
+    items, _ = build_timeline(events, datetime.fromisoformat(started).timestamp() if started else 0.0, a.get("trail") or [], {}, scan)
+    if not v.get("memory_id"):
+        return None, items, scan
+    path = await build_path(a, v, items, await known_for_review(v, {}, route_id))
+    if path["mode"] != "3d":
+        return None, items, scan
+    return {"scene": path["scene"], "run_trail": path["run_trail"], "floor_y": path["floor_y"], "heading_deg": heading,
+            "dots": [{"id": i["id"], "category": i["category"], "pos": i["pos"], "text": i["text"], "reason": i["reason"]} for i in items if i["category"] in ("spoken", "suppressed") and i["pos"]],
+            "entities": [{"id": e["id"], "label": e["label"], "pos": e["pos"]} for e in path["entities"] if e.get("pos")]}, items, scan
+
+
 @router.get("/replays/{attempt_id}")
 async def replay_state(attempt_id: str):
     a = await replay_attempt(attempt_id)
@@ -191,16 +207,8 @@ async def replay_state(attempt_id: str):
     pos = await checkpoint_positions(v) if v else {}
     ents = [machine_entity(ex.get("route_id"), v["version"], e) for e in v.get("known_entities") or [] if isinstance(e, dict)] if v else []
     frame = a.get("replay_frame", -1)
-    three = None
-    if v.get("memory_id"):
-        events = await db.attempt_events.find({"attempt_id": attempt_id}, {"_id": 0}).sort("seq", 1).to_list(5000)
-        items, _ = build_timeline(events, datetime.fromisoformat(a["started_at"]).timestamp(), trail, {}, await is_scan(v))
-        path = await build_path(a, v, items, await known_for_review(v, {}, ex.get("route_id")))
-        if path["mode"] == "3d":
-            fr = rec["frames"][frame] if 0 <= frame < len(rec["frames"]) else {}
-            three = {"scene": path["scene"], "run_trail": path["run_trail"], "floor_y": path["floor_y"], "heading_deg": (fr.get("pose") or {}).get("heading_deg"),
-                     "dots": [{"id": i["id"], "category": i["category"], "pos": i["pos"], "text": i["text"], "reason": i["reason"]} for i in items if i["category"] in ("spoken", "suppressed") and i["pos"]],
-                     "entities": [{"id": e["id"], "label": e["label"], "pos": e["pos"]} for e in path["entities"] if e.get("pos")]}
+    fr = rec["frames"][frame] if 0 <= frame < len(rec["frames"]) else {}
+    three, _, _ = await three_for(a, v, ex.get("route_id"), (fr.get("pose") or {}).get("heading_deg"))
     return {
         "attempt_id": attempt_id, "status": a["status"], "public": a.get("public", False), "route_name": route.get("name"), "three": three,
         "version": a["route_version"], "version_line": version_line(a["route_version"], route.get("current_version") or a["route_version"]),

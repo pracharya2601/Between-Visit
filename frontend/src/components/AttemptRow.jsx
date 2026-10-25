@@ -54,6 +54,7 @@ export default function AttemptRow({ a }) {
       <Link to={runPath(a.id)} className="bv-link bv-mono" data-testid={`${p}-run-link`}>{runPath(a.id)}</Link>
       <br />
       <Link to={`/review/${a.id}`} className="bv-link" aria-label={`Review attempt ${a.stream_id}`} data-testid={`${p}-review-link`}>Review</Link>
+      {(a.status === "running" || a.status === "paused") && !a.replay && <> · <Link to={`/live/${a.id}`} className="bv-link bv-strong" aria-label={`Watch attempt ${a.stream_id} live`} data-testid={`${p}-watch-live-link`}>Watch live</Link></>}
       {(a.status === "running" || a.status === "paused") && <MessageForm attemptId={a.id} p={p} />}
     </li>
   );
