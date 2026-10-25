@@ -2,13 +2,27 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useApi } from "@/hooks/useApi";
 import CopyField from "@/components/CopyField";
 import TeachLive from "@/components/teach/TeachLive";
 
 const ENDED = { cancelled: "This walk was cancelled.", expired: "This walk expired after 2 hours without activity." };
 
+function CancelConfirm({ busy, onConfirm, onKeep }) {
+  const { boxRef, startRef } = useDialogFocus(onKeep, "[data-testid=teach-cancel-button]");
+  return (
+    <div ref={boxRef} role="alertdialog" aria-labelledby="cancel-q" className="bv-panel" data-testid="teach-cancel-dialog">
+      <p id="cancel-q" ref={startRef} tabIndex={-1} className="bv-strong">Discard this walk? The map and proposed checkpoints will be deleted.</p>
+      <button type="button" className="bv-btn bv-run-btn bv-run-end" disabled={busy} onClick={onConfirm} data-testid="teach-cancel-confirm-button">Yes, cancel the walk</button>
+      <button type="button" className="bv-btn bv-run-btn" onClick={onKeep} data-testid="teach-cancel-keep-button">Keep walking</button>
+    </div>
+  );
+}
+
 export default function TeachWalk() {
+  useTitle("Teach a route by walking");
   const { id } = useParams();
   const navigate = useNavigate();
   const { status, data } = useApi(`${API}/teach/${id}`);
@@ -49,11 +63,7 @@ export default function TeachWalk() {
           <TeachLive sessionId={id} />
           <button type="button" className="bv-btn bv-run-btn bv-run-start" disabled={busy} onClick={() => act("finish", () => navigate(`/teach/${id}/review`))} data-testid="teach-finish-button">Finish walk</button>
           {confirmCancel ? (
-            <div role="alertdialog" aria-labelledby="cancel-q" className="bv-panel">
-              <p id="cancel-q" className="bv-strong">Discard this walk? The map and proposed checkpoints will be deleted.</p>
-              <button type="button" className="bv-btn bv-run-btn bv-run-end" disabled={busy} onClick={() => act("cancel", () => navigate("/routes"))} data-testid="teach-cancel-confirm-button">Yes, cancel the walk</button>
-              <button type="button" className="bv-btn bv-run-btn" onClick={() => setConfirmCancel(false)} data-testid="teach-cancel-keep-button">Keep walking</button>
-            </div>
+            <CancelConfirm busy={busy} onConfirm={() => act("cancel", () => navigate("/routes"))} onKeep={() => setConfirmCancel(false)} />
           ) : (
             <button type="button" className="bv-btn bv-run-btn bv-run-end" onClick={() => setConfirmCancel(true)} data-testid="teach-cancel-button">Cancel walk</button>
           )}

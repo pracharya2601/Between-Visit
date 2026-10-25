@@ -14,7 +14,14 @@ import TeachReview from "@/pages/TeachReview";
 import AttemptReview from "@/pages/AttemptReview";
 import NotePrint from "@/pages/NotePrint";
 import ReplayScreen from "@/pages/ReplayScreen";
+import Landing from "@/pages/Landing";
+import Research from "@/pages/Research";
 import { useParams } from "react-router-dom";
+
+function ReplayWatch() {
+  const { id } = useParams();
+  return <ReplayScreen isPublic attemptId={id} />;
+}
 
 function RouteReplay() {
   const { id } = useParams();
@@ -25,7 +32,7 @@ function Workspace() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/workspace" element={<Home />} />
         <Route path="/device-test" element={<DeviceTest />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/clients/:id" element={<ClientDetail />} />
@@ -46,7 +53,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/run/:id" element={<Layout nav={false}><ClientRun /></Layout>} />
-        <Route path="/demo" element={<Layout nav={false}><ReplayScreen isPublic /></Layout>} />
+        <Route path="/demo" element={<Layout nav={false} home="/"><ReplayScreen isPublic /></Layout>} />
+        <Route path="/replay/:id" element={<Layout nav={false} home="/"><ReplayWatch /></Layout>} />
+        <Route path="/" element={<Layout nav={false} home="/"><Landing /></Layout>} />
+        <Route path="/research" element={<Layout nav={false} home="/"><Research /></Layout>} />
         <Route path="/notes/:id/print" element={<NotePrint />} />
         <Route path="*" element={<Workspace />} />
       </Routes>

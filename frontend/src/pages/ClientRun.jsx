@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import RunSession from "@/components/run/RunSession";
 
 const MESSAGES = {
@@ -14,6 +15,7 @@ const MESSAGES = {
 const keyFromHash = () => new URLSearchParams(window.location.hash.slice(1)).get("key") || "";
 
 export default function ClientRun() {
+  useTitle("Practice run");
   const { id } = useParams();
   const key = useMemo(keyFromHash, []);
   const api = useMemo(() => axios.create({ baseURL: `${API}/run/${id}`, headers: { "X-Stream-Key": key } }), [id, key]);

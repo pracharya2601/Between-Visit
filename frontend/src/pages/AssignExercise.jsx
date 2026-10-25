@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { useApi } from "@/hooks/useApi";
 import AssignForm from "@/components/AssignForm";
 import OneTimeConfirmation from "@/components/OneTimeConfirmation";
 
 export default function AssignExercise() {
+  useTitle("Assign an exercise");
   const { id } = useParams();
   const navigate = useNavigate();
   const route = useApi(`${API}/routes/${id}`);

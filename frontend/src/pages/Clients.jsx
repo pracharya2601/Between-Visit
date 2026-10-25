@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { useApi } from "@/hooks/useApi";
 
 export default function Clients() {
+  useTitle("Clients");
   const { status, data } = useApi(`${API}/clients`);
   return (
     <div className="bv-stack">

@@ -109,3 +109,10 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Replay: practitioner (`/routes/:id/replay`) and public (`/demo`, Home "Try the demo"); same vision -> cue_policy pipeline, temperature 0 (`with_params`), original timing (drift <= 2 ms), ends after last frame, never records; Replay badge; 1920x1080 no-scroll screen.
 - Public cap 3 running (429 "Demo busy, try again in a minute."), 24 h sweep (excludes practitioner replays, notes, corrections), orphan replays ended on restart.
 - Backlog: real hardware recording on the demo route; sweep correction-exclusion only code-verified.
+
+## Phase 14 — Polish (2026-10-25)
+- Landing "/" (headline, subline, research line with CDC/ACVREP links, 3 steps, Try the demo / Open the practice workspace, /research link); old home at /workspace; logo /workspace in workspace, "/" on public pages; /replay/:id deep link.
+- /research (CDC, ACVREP, Dove et al. verbatim quotes, "Still validating with practitioners" empty).
+- Idempotent logged migration `phase14-demo-renames`: 3D demo route + checkpoints Entrance / Hallway turn / Reception desk across checkpoints, versions, events; 2D route "Lobby to elevator (synthetic)".
+- Device test removed from nav/workspace (URL kept); unique page titles; inline confirm dialogs trap/restore focus + Escape; skip link on note print; placeholder contrast.
+- axe-core: 0 serious/critical on 16 pages; regression scripts pass.

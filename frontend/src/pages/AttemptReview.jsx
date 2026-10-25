@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import ReviewHeader from "@/components/review/ReviewHeader";
 import Timeline from "@/components/review/Timeline";
 import Path2D from "@/components/review/Path2D";
@@ -35,6 +36,7 @@ function PathView({ id, path, dots, selected, onSelect }) {
 }
 
 export default function AttemptReview() {
+  useTitle("Attempt review");
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");

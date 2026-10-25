@@ -34,7 +34,7 @@ GAP_MS = 1400
 
 
 async def main():
-    route = await db.routes.find_one({"name": "Review demo route 3D (synthetic)"}, {"_id": 0})
+    route = await db.routes.find_one({"name": "Entrance → hallway turn → reception desk (synthetic)"}, {"_id": 0})
     if await db.recordings.find_one({"route_id": route["id"], "kind": "synthetic", "ready": True}):
         print("synthetic recording already present")
         return

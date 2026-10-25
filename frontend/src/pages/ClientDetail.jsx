@@ -1,10 +1,12 @@
 import { Link, useParams } from "react-router-dom";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { useApi } from "@/hooks/useApi";
 import ExerciseList from "@/components/ExerciseList";
 import ClientNotes from "@/components/ClientNotes";
 
 export default function ClientDetail() {
+  useTitle("Client");
   const { id } = useParams();
   const { status, data, code } = useApi(`${API}/clients/${id}`);
   const exercises = useApi(`${API}/clients/${id}/exercises`, 5000);

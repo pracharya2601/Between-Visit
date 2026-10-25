@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { speak, unlockSpeech } from "@/lib/speech";
 import ReplaySetup from "@/components/replay/ReplaySetup";
 import ReplayPath from "@/components/replay/ReplayPath";
@@ -25,7 +26,9 @@ function useReplay(attemptId, muted) {
         }
         setS(r.data);
         if (r.data.status === "ended") return;
-      } catch { /* keep polling */ }
+      } catch (e) {
+        if (e.response?.status === 404) return alive && setS({ missing: true });
+      }
       t = setTimeout(poll, 500);
     };
     poll();
@@ -63,8 +66,9 @@ function Stage({ s, muted, setMuted, isPublic }) {
   );
 }
 
-export default function ReplayScreen({ routeId, isPublic }) {
-  const [attemptId, setAttemptId] = useState(null);
+export default function ReplayScreen({ routeId, isPublic, attemptId: initialId = null }) {
+  useTitle(initialId ? "Replay" : isPublic ? "Demo" : "Replay demo run");
+  const [attemptId, setAttemptId] = useState(initialId);
   const [muted, setMuted] = useState(false);
   const s = useReplay(attemptId, muted);
   const start = useCallback(async (body) => {
@@ -78,7 +82,8 @@ export default function ReplayScreen({ routeId, isPublic }) {
       <h1 className="bv-replay-title" data-testid="replay-title">Demo replay{s?.route_name ? `: ${s.route_name}` : ""}</h1>
       {!attemptId && <ReplaySetup routeId={routeId} isPublic={isPublic} onStart={start} />}
       {attemptId && !s && <p role="status" data-testid="replay-loading">Starting the replay…</p>}
-      {s && <Stage s={s} muted={muted} setMuted={setMuted} isPublic={isPublic} />}
+      {s?.missing && <p className="bv-error" role="status" data-testid="replay-not-found">Replay not found. It may have been removed after 24 hours.</p>}
+      {s && !s.missing && <Stage s={s} muted={muted} setMuted={setMuted} isPublic={isPublic} />}
     </div>
   );
 }

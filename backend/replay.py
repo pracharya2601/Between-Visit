@@ -20,7 +20,7 @@ from storage import get_object
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
-DEMO_ROUTE = "Review demo route 3D (synthetic)"
+DEMO_ROUTE = "Entrance → hallway turn → reception desk (synthetic)"
 MAX_PUBLIC = 3
 TTL = timedelta(hours=24)
 BUSY = "Demo busy, try again in a minute."

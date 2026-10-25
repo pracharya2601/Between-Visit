@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { useApi } from "@/hooks/useApi";
 import TeachStartForm from "@/components/teach/TeachStartForm";
 
 export default function RoutesPage() {
+  useTitle("Routes");
   const { status, data } = useApi(`${API}/routes`);
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import CopyField from "@/components/CopyField";
 import StreamStatus from "@/components/StreamStatus";
 import CueForm from "@/components/CueForm";
 
 export default function DeviceTest() {
+  useTitle("Device test");
   const [cfg, setCfg] = useState(null);
   const [error, setError] = useState(false);
 

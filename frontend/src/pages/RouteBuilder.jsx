@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import CheckpointCard from "@/components/CheckpointCard";
 import { saveBlocker } from "@/lib/saveBlocker";
 import VersionHistory from "@/components/review/VersionHistory";
 import ReplayLauncher from "@/components/replay/ReplayLauncher";
 
 export default function RouteBuilder() {
+  useTitle("Route builder");
   const { id } = useParams();
   const [route, setRoute] = useState(null);
   const [cps, setCps] = useState([]);

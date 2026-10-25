@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 
 async function loadPracticeData() {
   const [practices, practitioners, clients] = await Promise.all(
@@ -35,16 +36,14 @@ function PracticeView({ data }) {
         </ul>
       </section>
       <p>
-        <Link to="/demo" className="bv-btn bv-btn-primary" data-testid="try-the-demo-link">Try the demo</Link>
-      </p>
-      <p>
-        <Link to="/device-test" className="bv-link" data-testid="device-test-link">Open the device test page</Link>
+        <Link to="/demo" className="bv-link" data-testid="try-the-demo-link">Try the demo</Link>
       </p>
     </div>
   );
 }
 
 export default function Home() {
+  useTitle("Practice workspace");
   const [state, setState] = useState({ status: "loading", data: null });
 
   useEffect(() => {

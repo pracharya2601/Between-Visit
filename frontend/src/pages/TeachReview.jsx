@@ -2,12 +2,14 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { useTitle } from "@/hooks/useTitle";
 import { saveBlocker } from "@/lib/saveBlocker";
 import CheckpointCard from "@/components/CheckpointCard";
 
 const Scene3D = lazy(() => import("@/components/teach/Scene3D"));
 
 export default function TeachReview() {
+  useTitle("Review taught checkpoints");
   const { id } = useParams();
   const [session, setSession] = useState(null);
   const [scene, setScene] = useState(null);

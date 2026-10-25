@@ -1,4 +1,5 @@
 import logging
+import re
 
 from db import db
 from models import now_iso
@@ -79,3 +80,52 @@ async def phase4_model_updates():
         {"$set": {"silence_rules": {"stay_silent_on_route": True, "no_repeat": True, "note": None}}},
     )
     await db.exercises.update_many({"route_version": {"$exists": False}}, {"$set": {"route_version": 0}})
+
+
+DEMO_3D_OLD, DEMO_3D_NEW = "Review demo route 3D (synthetic)", "Entrance → hallway turn → reception desk (synthetic)"
+DEMO_2D_OLD, DEMO_2D_NEW = "Review demo route 2D (synthetic)", "Lobby to elevator (synthetic)"
+CP_RENAMES = {"Start": "Entrance", "Turn 1": "Hallway turn", "End": "Reception desk"}
+CP_PREFIX = re.compile(r"^(Checkpoint \d+: )(Start|Turn 1|End)\b")
+
+
+def _rename(o):
+    """Renames old checkpoint names in exact-match strings and 'Checkpoint N: <name>' texts, recursively."""
+    if isinstance(o, dict):
+        return {k: _rename(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_rename(v) for v in o]
+    if isinstance(o, str):
+        return CP_RENAMES.get(o) or CP_PREFIX.sub(lambda m: m.group(1) + CP_RENAMES[m.group(2)], o)
+    return o
+
+
+async def _rewrite(coll: str, query: dict) -> int:
+    n = 0
+    async for d in db[coll].find(query):
+        new = _rename({k: v for k, v in d.items() if k not in ("_id", "id")})
+        if any(new[k] != d[k] for k in new):
+            await db[coll].update_one({"_id": d["_id"]}, {"$set": new})
+            n += 1
+    return n
+
+
+async def phase14_demo_renames():
+    """One-off, user-approved rename of the two synthetic demo routes (exception to 'history never rewritten')."""
+    marker = "phase14-demo-renames"
+    if await db.migrations.find_one({"id": marker}):
+        return
+    result = {}
+    r3 = await db.routes.find_one({"name": {"$in": [DEMO_3D_OLD, DEMO_3D_NEW]}}, {"_id": 0, "id": 1})
+    if r3:
+        rid = r3["id"]
+        await db.routes.update_one({"id": rid}, {"$set": {"name": DEMO_3D_NEW}})
+        exs = [e["id"] for e in await db.exercises.find({"route_id": rid}, {"_id": 0, "id": 1}).to_list(1000)]
+        atts = [a["id"] for a in await db.attempts.find({"exercise_id": {"$in": exs}}, {"_id": 0, "id": 1}).to_list(10000)]
+        for coll, q in (("checkpoints", {"route_id": rid}), ("route_versions", {"route_id": rid}), ("recordings", {"route_id": rid}),
+                        ("attempt_events", {"attempt_id": {"$in": atts}}), ("progress_notes", {"attempt_id": {"$in": atts}})):
+            result[coll] = await _rewrite(coll, q)
+        result["route_3d"] = rid
+    r2 = await db.routes.update_one({"name": DEMO_2D_OLD}, {"$set": {"name": DEMO_2D_NEW}})
+    result["route_2d_renamed"] = r2.modified_count
+    await db.migrations.insert_one({"id": marker, "created_at": now_iso(), "result": result})
+    logger.info("%s: %s", marker, result)
