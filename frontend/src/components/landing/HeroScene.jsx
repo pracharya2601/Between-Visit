@@ -5,7 +5,7 @@ import * as THREE from "three";
 import Scene3D from "@/components/teach/Scene3D";
 import { API } from "@/lib/api";
 
-const AMBER = "#e08a00", GREY = "#8a8a8a", PURPLE = "#7b2fbf";
+const YELLOW = "#f5c400", GREEN = "#2fbf5f", AMBER = "#f0a020", WALKER = "#f5f2ea";
 const PAUSE_MS = 2200;
 const CHAIR_FRAME = 3;
 
@@ -39,21 +39,33 @@ function Loop({ data, onPass }) {
   useEffect(() => onPass(shown, state.pass), [shown, state.pass, onPass]);
   const trail = useMemo(() => poses.slice(0, state.i + 1).map((p) => [p[0], 0.05, p[1]]), [poses, state.i]);
   const sight = poses[CHAIR_FRAME];
+  const cps = useMemo(() => (data.scene.checkpoints || []).filter((c) => c.position).map((c) => {
+    const k = poses.findIndex((p) => Math.hypot(p[0] - c.position[0], p[1] - c.position[2]) < 1.5);
+    return { ...c, at: k < 0 ? poses.length - 1 : k };
+  }), [data.scene.checkpoints, poses]);
+  const route = useMemo(() => (data.scene.trail || []).map((p) => [p[0], 0.04, p[2]]), [data.scene.trail]);
   return (
     <>
-      {trail.length > 1 && <Line points={trail} color="#d6007a" lineWidth={5} />}
+      {route.length > 1 && <Line points={route} color={YELLOW} lineWidth={2} transparent opacity={0.45} />}
+      {trail.length > 1 && <Line points={trail} color={YELLOW} lineWidth={6} />}
+      {cps.map((c) => (
+        <mesh key={c.id} position={[c.position[0], 0.25, c.position[2]]} userData={{ reached: state.i >= c.at }}>
+          <sphereGeometry args={[0.34, 20, 20]} />
+          <meshBasicMaterial color={YELLOW} wireframe={state.i < c.at} />
+        </mesh>
+      ))}
       {shown && (
         <mesh position={[sight[0], 0.3, sight[1]]}>
           {state.pass === 0 ? <sphereGeometry args={[0.2, 16, 16]} /> : <boxGeometry args={[0.3, 0.3, 0.3]} />}
-          <meshBasicMaterial color={state.pass === 0 ? AMBER : GREY} />
+          <meshBasicMaterial color={state.pass === 0 ? GREEN : AMBER} />
         </mesh>
       )}
       {state.pass === 1 && data.chair && (
-        <mesh position={[data.chair.pos[0], 1.3, data.chair.pos[1]]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.3, 0.5, 3]} /><meshBasicMaterial color={PURPLE} /></mesh>
+        <mesh position={[data.chair.pos[0], 1.3, data.chair.pos[1]]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.3, 0.5, 3]} /><meshBasicMaterial color={AMBER} /></mesh>
       )}
       <group ref={marker}>
-        <mesh position={[0, 0.15, 0]}><cylinderGeometry args={[0.22, 0.22, 0.3, 24]} /><meshBasicMaterial color="#00b3ff" /></mesh>
-        <mesh position={[0, 0.15, -0.45]} rotation={[-Math.PI / 2, 0, 0]}><coneGeometry args={[0.14, 0.4, 16]} /><meshBasicMaterial color="#ffffff" /></mesh>
+        <mesh position={[0, 0.15, 0]}><cylinderGeometry args={[0.22, 0.22, 0.3, 24]} /><meshBasicMaterial color={WALKER} /></mesh>
+        <mesh position={[0, 0.15, -0.45]} rotation={[-Math.PI / 2, 0, 0]}><coneGeometry args={[0.14, 0.4, 16]} /><meshBasicMaterial color={WALKER} /></mesh>
       </group>
     </>
   );
@@ -66,8 +78,8 @@ export default function HeroScene({ label, onCard, onFail }) {
   }, [onFail]);
   if (!data) return null;
   return (
-    <Scene3D scene={data.scene} pointsUrl={`${API}/demo/points`} colorsUrl={data.scene.rgb ? `${API}/demo/points?colors=true` : null} label={label}
-      testId="hero-scene" controls="none" hint="" view={{ position: [-4.6, 8.6, 2.6], target: [2.6, 0, -6.0] }}>
+    <Scene3D scene={{ ...data.scene, trail: [] }} reached={[]} pointsUrl={`${API}/demo/points`} colorsUrl={data.scene.rgb ? `${API}/demo/points?colors=true` : null} label={label}
+      testId="hero-scene" controls="none" hint="" view={{ position: [-2.6, 11.0, 3.2], target: [2.8, 0, -4.8] }}>
       <Loop data={data} onPass={onCard} />
     </Scene3D>
   );

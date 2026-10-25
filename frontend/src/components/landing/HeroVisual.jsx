@@ -45,9 +45,10 @@ export default function HeroVisual() {
   }, []);
   return (
     <div className={`bv-hero-visual bv-hero-${mode}`} data-testid="hero-visual" data-mode={mode}>
+      {mode === "3d" && <img src={still} alt="" aria-hidden="true" className="bv-hero-still bv-hero-underlay" width="1200" height="800" />}
       {mode === "3d" ? (
         <Boundary onFail={fail}>
-          <Suspense fallback={<Still />}>
+          <Suspense fallback={null}>
             <HeroScene label={LABEL} onCard={onCard} onFail={fail} />
           </Suspense>
         </Boundary>

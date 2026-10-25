@@ -85,6 +85,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 18: Create a route from an uploaded 3D scan → [requirement](phase18/requirement.md) · [journeys](phase18/journeys.md)
 - Phase 19: Distinct-landmark warning + demo landmark fix → [requirement](phase19/requirement.md) · [journeys](phase19/journeys.md)
 - Phase 20: Live 3D while walking (teach walk live map + practitioner "Watch live") → [requirement](phase20/requirement.md) · [journeys](phase20/journeys.md)
+- Phase 21: Landing page redesign v2 → [requirement](phase21/requirement.md) · [journeys](phase21/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 

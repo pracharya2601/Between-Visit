@@ -1,0 +1,23 @@
+{
+  "summary": "Phase 21 landing '/' verified independently per spec. All section order, headings, testids, buttons, hero 3D/still modes, reduced-motion fallback, overflow, GET-only networking, and smoke of /demo /workspace /research pass. No regressions found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing hero", "issues": ["Hero CTA label is 'Watch the 20-second demo' while closing CTA is 'Try the 20-second demo' (spec explicitly lists only the closing final CTA as 'Try the 20-second demo', so this is acceptable; noted for awareness)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "HeroVisual.jsx: cancelIdleCallback/clearTimeout cleanup uses `(window.cancelIdleCallback || clearTimeout)(id)`; when the browser lacks requestIdleCallback the id is a setTimeout handle but on browsers that have cancelIdleCallback the id may be an idle-callback id — currently fine because the two branches align, but the ternary pattern is fragile and could silently fail if polyfills change."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Phase 21 landing: order [hero,problem,demo-strip,how,specialist-rows,human,stats,safeguards,closing] confirmed. hero data-mode='3d' with canvas data-testid=hero-scene-canvas on WebGL-capable browsers; falls back to data-mode='still' with hero-still img under prefers-reduced-motion. Caption cycles 'Spoken: Chair ahead, about 2 metres.' <-> 'Held back: Known, chair confirmed in v2'. API calls on landing are GET-only: /api/demo/scene, /api/demo/points (?colors=true), /api/attempts/<id>/review — zero POSTs. No horizontal overflow at 360/375/768. Six safeguards present. CDC + ACVREP links correct with exact caveat sentence. Skip link present. Single h1, one h2 per section. landing-open-review-link resolves to /review/<id>. /demo, /workspace, /research all return 200.",
+  "rca of the issue": "n/a"
+}

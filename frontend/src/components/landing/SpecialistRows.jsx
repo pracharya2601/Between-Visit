@@ -5,9 +5,9 @@ import { mss } from "@/lib/format";
 
 function pick(timeline) {
   const chair = timeline.find((i) => i.category === "spoken" && i.entity?.label === "chair");
-  const repeat = timeline.find((i) => i.reason?.startsWith("Not repeated"));
-  const held = timeline.find((i) => i.reason?.startsWith("Held back: another cue"));
-  return [chair, repeat, held].filter(Boolean).sort((a, b) => a.at - b.at);
+  const held = timeline.find((i) => i.category === "suppressed" && i.reason?.startsWith("Held back: another cue"))
+    || timeline.find((i) => i.category === "suppressed" && i.reason);
+  return [chair, held].filter(Boolean).sort((a, b) => a.at - b.at);
 }
 
 export default function SpecialistRows() {
@@ -22,19 +22,23 @@ export default function SpecialistRows() {
   return (
     <section className="bv-l-section" aria-labelledby="sees-heading" data-testid="landing-specialist">
       <div className="bv-l-inner">
-        <h2 id="sees-heading" className="bv-l-h2">What the specialist sees</h2>
-        <p className="bv-l-lead">Real rows from the demo review: what was spoken, what was held back, and why, in plain words.</p>
+        <h2 id="sees-heading" className="bv-l-h2">What the specialist learns</h2>
         <ol className="bv-l-rows">
           {rows.map((r) => (
             <li key={r.id} className={`bv-l-row bv-l-row-${r.category}`} data-testid={`landing-row-${r.category}`}>
               <span className="bv-l-row-time">{mss(r.at)}</span>
               <span className="bv-l-row-kind">{r.category === "spoken" ? "Spoken" : "Held back"}</span>
               <span className="bv-l-row-text">{r.category === "spoken" ? r.text : `Would have said: ${r.text}`}</span>
-              {r.reason && <span className="bv-l-row-reason">Reason: {r.reason}</span>}
+              {r.reason && r.category !== "spoken" && <span className="bv-l-row-reason">Reason: {r.reason}</span>}
             </li>
           ))}
+          <li className="bv-l-row bv-l-row-confirm" data-testid="landing-row-confirm">
+            <span className="bv-l-row-time" aria-hidden="true" />
+            <span className="bv-l-row-kind">Confirmed</span>
+            <span className="bv-l-row-text">Specialist confirms the chair; route memory saved as v2.</span>
+          </li>
         </ol>
-        <Link to={`/review/${id}`} className="bv-l-link" data-testid="landing-open-review-link">Open the full review</Link>
+        <Link to={`/review/${id}`} className="bv-l-textlink" data-testid="landing-open-review-link">Open the full review</Link>
       </div>
     </section>
   );
