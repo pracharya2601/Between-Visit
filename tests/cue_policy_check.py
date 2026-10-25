@@ -123,6 +123,13 @@ CASES = {
                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
     "REQ-554 stale pose -> position rule off": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_x": None, "pos_z": None}, None)],
                                                 [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "SCAN radius 1.5: scan route at 1.3 m -> reached by position": (ex(), [(1, vis("Entrance doors"), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0)}, None), (5, vis(), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0), "pos_z": -6.3}, None)],
+                                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position", "distance_m": 1.3})]),
+    "SCAN radius 1.5: scan route at 1.6 m -> not reached": (ex(), [(1, vis("Entrance doors"), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0)}, None), (5, vis(), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0), "pos_z": -6.6}, None)],
+                                                            [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "SCAN radius 1.5: teach route at 1.3 m -> not reached (1.0 m applies)": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_z": -6.3}, None)],
+                                                                            [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+
     "REQ-554 no checkpoint positions -> position rule off": (ex(), [(1, vis("Entrance doors"), POSE, None), (5, vis(), {**POSE, "pos_z": -5.5}, None)],
                                                              [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
     "REQ-555 position on next beats picture on next+1": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Reception desk"), {**POSE_CP, "pos_z": -5.5}, None), (9, vis("Reception desk"), {**POSE_CP, "pos_x": 5.0, "pos_z": -3.0}, None)],

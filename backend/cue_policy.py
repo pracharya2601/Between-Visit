@@ -17,6 +17,7 @@ BAND_M = {"near": 1.0, "mid": 2.5, "far": 5.0}
 BAND_TEXT = {"near": ", close.", "mid": ", a few steps.", "far": ", further ahead."}
 KNOWN_RADIUS_M = 2.0
 POSITION_RADIUS_M = 1.0
+SCAN_POSITION_RADIUS_M = 1.5
 WALK_ALIGN_M = 1.5
 PICTURE_MAX_DIST_M = 3.0
 SIDE_ANGLE = {"ahead": 0.0, "left": -25.0, "right": 25.0}
@@ -234,7 +235,7 @@ def _position_hit(idx: int, sensors: dict) -> Optional[float]:
         return None
     x, z = to_route(al, sensors["pos_x"], sensors["pos_z"])
     d = math.hypot(x - cpp[0], z - cpp[1])
-    return round(d, 2) if d <= POSITION_RADIUS_M else None
+    return round(d, 2) if d <= (SCAN_POSITION_RADIUS_M if sensors.get("scan") else POSITION_RADIUS_M) else None
 
 
 def _picture_dist(idx: int, sensors: dict) -> Optional[float]:

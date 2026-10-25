@@ -66,7 +66,7 @@ async def handle(attempt_id: str, event: dict, sensors: Optional[dict] = None) -
         trail = doc.get("trail") or []
         origin = (trail[0]["x"], trail[0]["z"]) if trail else None
         align = cue_policy.alignment([(p["x"], p["z"]) for p in trail], scan)
-        snap = {**sensors, "origin": origin, "align": align, "cp_positions": cp_positions, "last_frame_at": ingest.state_for(attempt_id).last_frame_at}
+        snap = {**sensors, "origin": origin, "align": align, "cp_positions": cp_positions, "scan": scan, "last_frame_at": ingest.state_for(attempt_id).last_frame_at}
         cue, STATES[attempt_id] = cue_policy.decide(STATES.get(attempt_id, cue_policy.PolicyState()), event, ex, version, snap, time.time())
         if cue is not None:
             await _deliver(attempt_id, cue, event, snap)
