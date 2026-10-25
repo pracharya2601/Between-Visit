@@ -16,7 +16,7 @@ function validate(f) {
 const FieldError = ({ id, text }) => (text ? <p id={id} className="bv-error-text bv-field-error" data-testid={id}>{text}</p> : null);
 
 export default function AssignForm({ routeId, clients, onCreated }) {
-  const [f, setF] = useState({ client_id: "", goal: "", cue_style: "standard", stay_silent_on_route: true, no_repeat: true, note: "", stop_rule: STOP_RULE });
+  const [f, setF] = useState({ client_id: "", goal: "", cue_style: "standard", stay_silent_on_route: true, no_repeat: true, note: "", stop_rule: STOP_RULE, record_demo: false });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,6 +78,10 @@ export default function AssignForm({ routeId, clients, onCreated }) {
         <label htmlFor="note" className="bv-label bv-label-spaced">Silence note (optional)</label>
         <input id="note" className="bv-input" value={f.note} onChange={set("note")} data-testid="assign-note-input" />
       </fieldset>
+      <label className="bv-choice bv-label-spaced">
+        <input type="checkbox" checked={f.record_demo} onChange={set("record_demo")} data-testid="assign-record-demo-checkbox" />
+        <span>Record this run as a demo (empty space, team only)</span>
+      </label>
       <div className="bv-field">
         <label htmlFor="stop_rule" className="bv-label">Stop-and-contact rule</label>
         <textarea id="stop_rule" rows={2} className="bv-input" value={f.stop_rule} onChange={set("stop_rule")} {...err("stop_rule")} data-testid="assign-stop-rule-input" />

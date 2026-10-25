@@ -232,3 +232,31 @@ textarea.bv-input { resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Phase 13: demo replay */
+.bv-wrap:has(.bv-replay-page) { max-width: 96rem; }
+.bv-main:has(.bv-replay-page) { padding: 0.5rem 0 0.5rem; }
+.bv-replay-title { font-size: 1.5rem; margin: 0 0 0.5rem; }
+.bv-replay-setup { max-width: 40rem; }
+.bv-replay { display: grid; grid-template-columns: min(70vh, 46vw) minmax(0, 1fr); gap: 0.75rem 1.5rem; align-items: start; }
+.bv-replay-frame { background: var(--bv-ink); border: 3px solid var(--bv-ink); aspect-ratio: 3 / 2; display: flex; align-items: center; justify-content: center; color: #fff; }
+.bv-replay-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bv-replay-caption { font-size: 2.6rem; line-height: 1.2; font-weight: 700; grid-column: 1 / -1; margin: 0; min-height: 2.4em; border-left: 10px solid var(--bv-accent); padding-left: 1rem; }
+.bv-replay-right p { margin: 0 0 0.4rem; }
+.bv-replay-label { display: inline-block; background: #fff3c4; border: 2px solid var(--bv-ink); padding: 0.1rem 0.6rem; font-weight: 700; }
+.bv-replay-path { margin: 0.5rem 0; border: 2px solid var(--bv-line); background: var(--bv-panel); padding: 0.5rem; }
+.bv-replay-path svg { width: 100%; height: auto; max-height: 15rem; display: block; }
+.bv-replay-path figcaption { font-size: 0.8rem; }
+.bv-rp-route { fill: none; stroke: #8a8a8a; stroke-width: 3; stroke-dasharray: 8 6; }
+.bv-rp-walked { fill: none; stroke: var(--bv-accent); stroke-width: 5; stroke-linejoin: round; }
+.bv-rp-cp { fill: #fff; stroke: var(--bv-ink); stroke-width: 3; }
+.bv-rp-cp-on { fill: #004d1a; }
+.bv-rp-ent { fill: #fff3c4; stroke: var(--bv-ink); stroke-width: 3; }
+.bv-rp-here { fill: var(--bv-focus); stroke: var(--bv-ink); stroke-width: 3; }
+.bv-rp-text { font-size: 16px; font-weight: 700; fill: var(--bv-ink); }
+.bv-replay-actions { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; align-items: center; }
+@media (max-width: 900px) {
+  .bv-replay { grid-template-columns: minmax(0, 1fr); }
+  .bv-replay-caption { font-size: 1.8rem; order: 1; }
+  .bv-replay-right { order: 2; }
+}

@@ -35,6 +35,9 @@ function PracticeView({ data }) {
         </ul>
       </section>
       <p>
+        <Link to="/demo" className="bv-btn bv-btn-primary" data-testid="try-the-demo-link">Try the demo</Link>
+      </p>
+      <p>
         <Link to="/device-test" className="bv-link" data-testid="device-test-link">Open the device test page</Link>
       </p>
     </div>

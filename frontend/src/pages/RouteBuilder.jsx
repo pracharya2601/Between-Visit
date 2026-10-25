@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import CheckpointCard from "@/components/CheckpointCard";
 import { saveBlocker } from "@/lib/saveBlocker";
 import VersionHistory from "@/components/review/VersionHistory";
+import ReplayLauncher from "@/components/replay/ReplayLauncher";
 
 export default function RouteBuilder() {
   const { id } = useParams();
@@ -108,6 +109,7 @@ export default function RouteBuilder() {
         </button>
         <p aria-live="polite" role="status" className="bv-cp-msg" data-testid="save-status">{status}</p>
       </section>
+      {route.current_version >= 1 && <ReplayLauncher routeId={id} />}
       {route.current_version >= 1 && <VersionHistory routeId={id} refreshToken={route.current_version} />}
     </div>
   );

@@ -45,6 +45,8 @@ export default function AttemptRow({ a }) {
   return (
     <li data-testid={p}>
       <span className="bv-mono">{a.stream_id}</span> · <span data-testid={`${p}-version`}>v{a.route_version}</span> · <span data-testid={`${p}-status`}>{STATUS[a.status] ?? a.status}</span>
+      {a.record_demo && <> · <span className="bv-tag" data-testid={`${p}-recording-badge`}>Recording</span></>}
+      {a.replay && <> · <span className="bv-tag" data-testid={`${p}-replay-badge`}>Replay</span></>}
       {a.last_help_at && (
         <p className="bv-help-alert" role="alert" data-testid={`${p}-help-alert`}>Help requested {hhmm(a.last_help_at)}</p>
       )}

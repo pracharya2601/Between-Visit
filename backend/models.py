@@ -149,6 +149,22 @@ class AttemptPublic(BaseDocument):
     active_seconds: float = 0
     running_since: Optional[str] = None
     route_version: Optional[int] = None
+    record_demo: bool = False
+    replay: bool = False
+    recording_id: Optional[str] = None
+    public: bool = False
+
+
+class Recording(BaseDocument):
+    route_id: str
+    route_version: Optional[int] = None
+    attempt_id: Optional[str] = None
+    exercise_id: str
+    kind: Literal["real", "synthetic"]
+    label: str
+    frames: list = Field(default_factory=list)
+    skipped: dict = Field(default_factory=dict)
+    ready: bool = False
 
 
 class Attempt(AttemptPublic):
@@ -239,6 +255,7 @@ COLLECTIONS = {
     "teach_sessions": TeachSession,
     "route_memories": RouteMemory,
     "progress_notes": ProgressNote,
+    "recordings": Recording,
 }
 
 FOREIGN_KEYS = {

@@ -13,6 +13,13 @@ import TeachWalk from "@/pages/TeachWalk";
 import TeachReview from "@/pages/TeachReview";
 import AttemptReview from "@/pages/AttemptReview";
 import NotePrint from "@/pages/NotePrint";
+import ReplayScreen from "@/pages/ReplayScreen";
+import { useParams } from "react-router-dom";
+
+function RouteReplay() {
+  const { id } = useParams();
+  return <ReplayScreen routeId={id} />;
+}
 
 function Workspace() {
   return (
@@ -28,6 +35,7 @@ function Workspace() {
         <Route path="/teach/:id" element={<TeachWalk />} />
         <Route path="/teach/:id/review" element={<TeachReview />} />
         <Route path="/review/:id" element={<AttemptReview />} />
+        <Route path="/routes/:id/replay" element={<RouteReplay />} />
       </Routes>
     </Layout>
   );
@@ -38,6 +46,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/run/:id" element={<Layout nav={false}><ClientRun /></Layout>} />
+        <Route path="/demo" element={<Layout nav={false}><ReplayScreen isPublic /></Layout>} />
         <Route path="/notes/:id/print" element={<NotePrint />} />
         <Route path="*" element={<Workspace />} />
       </Routes>

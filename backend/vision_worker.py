@@ -137,8 +137,10 @@ def build_prompt(version: dict, last_match: Optional[str], depth_text: str) -> s
     )
 
 
-async def ask_model(model: str, prompt: str, jpeg: bytes) -> str:
+async def ask_model(model: str, prompt: str, jpeg: bytes, replay: bool = False) -> str:
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"vision-{uuid.uuid4()}", system_message=SYSTEM).with_model("anthropic", model)
+    if replay:
+        chat = chat.with_params(temperature=0)
     msg = UserMessage(text=prompt, file_contents=[ImageContent(image_base64=base64.b64encode(jpeg).decode())])
     parts = []
     async for ev in chat.stream_message(msg):
@@ -209,7 +211,7 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
     except Exception:
         return await log_and_cue(attempt_id, "vision_error", reason="not_an_image", latency_ms=ms(), model=model, source=source)
     try:
-        reply = await asyncio.wait_for(ask_model(model, build_prompt(version, last and last["checkpoint"], depth_text), jpeg), timeout)
+        reply = await asyncio.wait_for(ask_model(model, build_prompt(version, last and last["checkpoint"], depth_text), jpeg, attempt.replay), timeout)
     except asyncio.TimeoutError:
         return await log_and_cue(attempt_id, "vision_error", reason="timeout", latency_ms=ms(), model=model, source=source)
     except Exception as exc:
@@ -222,3 +224,6 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
         source=source, checkpoint=result.checkpoint_match, uncertain=result.uncertain, spoken=False,
         depth_prompt=depth_text, **snap,
     )
+    if attempt.record_demo and not attempt.replay:
+        import recording
+        recording.consider(attempt, frame, result.model_dump(), snap, source)

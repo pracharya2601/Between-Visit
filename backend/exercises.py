@@ -25,6 +25,11 @@ class AssignIn(BaseModel):
     no_repeat: bool = True
     note: Optional[str] = None
     stop_rule: Required
+    record_demo: bool = False
+
+
+class NewAttemptIn(BaseModel):
+    record_demo: bool = False
 
 
 class AttemptCreated(BaseModel):
@@ -43,11 +48,11 @@ class ExerciseView(Exercise):
     attempts: List[AttemptView]
 
 
-async def create_attempt(exercise_id: str, route_version: int) -> tuple[Attempt, str]:
+async def create_attempt(exercise_id: str, route_version: int, **extra) -> tuple[Attempt, str]:
     key = secrets.token_urlsafe(24)
     for _ in range(20):
         stream_id = "att-" + "".join(secrets.choice(ALPHABET) for _ in range(4))
-        attempt = Attempt(exercise_id=exercise_id, status="not_started", stream_id=stream_id, key_hash=hash_key(key), route_version=route_version)
+        attempt = Attempt(exercise_id=exercise_id, status="not_started", stream_id=stream_id, key_hash=hash_key(key), route_version=route_version, **extra)
         try:
             await db.attempts.insert_one(attempt.to_mongo())
             return attempt, key
@@ -88,7 +93,7 @@ async def assign_exercise(route_id: str, body: AssignIn):
     )
     await db.exercises.insert_one(exercise.to_mongo())
     try:
-        attempt, key = await create_attempt(exercise.id, route.current_version)
+        attempt, key = await create_attempt(exercise.id, route.current_version, record_demo=body.record_demo)
     except Exception:
         await db.exercises.delete_one({"id": exercise.id})
         raise HTTPException(status_code=500, detail="Couldn't assign the exercise. Nothing was saved. Try again.")
@@ -96,10 +101,10 @@ async def assign_exercise(route_id: str, body: AssignIn):
 
 
 @router.post("/exercises/{exercise_id}/attempts", response_model=AttemptCreated, status_code=201)
-async def new_attempt(exercise_id: str):
+async def new_attempt(exercise_id: str, body: Optional[NewAttemptIn] = None):
     exercise = await get_exercise(exercise_id)
     route = await get_route(exercise.route_id)
-    attempt, key = await create_attempt(exercise.id, route.current_version)
+    attempt, key = await create_attempt(exercise.id, route.current_version, record_demo=bool(body and body.record_demo))
     return created(exercise, attempt, key)
 
 

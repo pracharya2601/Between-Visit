@@ -101,3 +101,11 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - backend/notes.py: code-built text fact sheet (reuses review.py), Claude Sonnet 5.5 (NOTE_MODEL) draft with heading validation (1 retry), numbers check, 45 s timeout; progress_notes collection, one per attempt, read-only; client notes list + print view (/notes/{id}/print).
 - backend/machine.py: one machine-view serializer (REPLAN_LEFT/RIGHT, authoritative false) used by review items, version history and GET /api/routes/{id}/memory?version=N (checkpoint positions start-relative for taught routes).
 - Check note deleted after verification; demo data unchanged.
+
+
+## Phase 13 — Demo recording + replay (2026-10-25)
+- Recording: `record_demo` checkbox (Assign + New attempt), analysed frames only, person in vision result or Sonnet person check fail/person/timeout -> not stored (fail closed); EXIF-stripped JPEG + t_offset_ms/pose/depth/source in `recordings`; Recording badge; run page announces at Start; `recording.consider` asserts record_demo and not replay.
+- Synthetic fallback: 12 AI-generated empty-corridor frames, 1.4 s apart, chair between Start and Turn 1, kept on "Review demo route 3D (synthetic)".
+- Replay: practitioner (`/routes/:id/replay`) and public (`/demo`, Home "Try the demo"); same vision -> cue_policy pipeline, temperature 0 (`with_params`), original timing (drift <= 2 ms), ends after last frame, never records; Replay badge; 1920x1080 no-scroll screen.
+- Public cap 3 running (429 "Demo busy, try again in a minute."), 24 h sweep (excludes practitioner replays, notes, corrections), orphan replays ended on restart.
+- Backlog: real hardware recording on the demo route; sweep correction-exclusion only code-verified.

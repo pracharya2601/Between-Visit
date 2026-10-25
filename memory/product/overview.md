@@ -59,7 +59,10 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-48 | Corrections on review items: Confirm / Edit / Dismiss → corrections log; Confirm → next route version with a known entity | practitioner | 11 |
 | F-49 | Version history (route + review pages), "Remove from memory" → next version; attempts carry their own version (new = latest) | practitioner | 11 |
 | F-51 | AI progress note (Claude Sonnet 5.5, from the attempt log only): draft → edit → approve and save; listed on the client page with Copy/Print | practitioner | 12 |
-| F-52 | Machine view JSON per confirmed entity + GET /api/routes/{id}/memory?version=N | practitioner / systems | 12 |
+| F-53 | Demo recording (opt-in checkbox; analysed frames + pose + depth; double person check; "Recording" badge; run page notice) | practitioner / team | 13 |
+| F-54 | Replay a recording through the live pipeline on v1 or latest (temperature 0) → new replay attempt | practitioner | 13 |
+| F-55 | Replay screen (frame, large caption, voice + mute, checkpoint, counts, live path; 1920×1080 with no scroll) + "Try the demo" on home (≤3 public at once, 24 h auto-delete) | judges / public | 13 |
+| F-56 | Synthetic fallback recording (12 AI-generated frames, chair between cp 1–2), labelled "Synthetic demo (AI-generated images)" | system | 13 |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -74,6 +77,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 10: Start-grace fix + attempt review → F-45..F-46. [requirement](phase10/requirement.md) · [journeys](phase10/journeys.md)
 - Phase 11: Fixes + corrections and route memory versions → F-47..F-50. [requirement](phase11/requirement.md) · [journeys](phase11/journeys.md)
 - Phase 12: Progress note + machine view → F-51..F-52. [requirement](phase12/requirement.md) · [journeys](phase12/journeys.md)
+- Phase 13: Demo recording + replay → F-53..F-56. [requirement](phase13/requirement.md) · [journeys](phase13/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 
@@ -93,6 +97,7 @@ None in Phase 1. No auth.
 - Never store frames from client runs. Only checkpoint photos of empty spaces (photo_url) are stored.
 - (Phase 2) stream_id + key live on attempts, not exercises. The key is a private access code; it's never returned by list endpoints or written to logs. It's stored hashed. Only the seeded test attempt's key is shown, on /device-test. Later, the practitioner sees a new attempt's key exactly once, when it's created.
 - Frames are never stored: count, last time, last size, then discard.
+- (Phase 13) The ONLY exception: runs explicitly ticked "Record this run as a demo (empty space, team only)" store the frames that were analysed (~1/s) with time, pose and depth L/C/R, and only if BOTH the live vision result and a Sonnet person check find no person (fail closed). Storage can't delete, so a stored frame can only be made unservable. Replay attempts are public demo data: their frames, pose path and cues may be shown on the public replay screen. Everything else keeps the original rules.
 - (Phase 4) A new attempt's key is shown once in the assignment/new-attempt confirmation. It travels only in the run link's URL fragment (/run/{id}#key=…), which never reaches the server. The server keeps only the hash. If the key is lost, make a new attempt.
 - Seeding is idempotent: restarting never creates duplicates.
 - Backend down or empty data → the home page shows "Couldn't load practice data".

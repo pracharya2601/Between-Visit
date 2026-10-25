@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, StringConstraints
 
 import cue_runner
+import recording
 from db import db
 from ingest import key_matches, push_guide, state_for
 from models import Attempt, AttemptEvent, now_iso
@@ -43,6 +44,7 @@ class RunInfo(BaseModel):
     stop_rule: str
     last_cue: Optional[CueOut]
     state: RunState
+    record_demo: bool = False
 
 
 class CuesOut(BaseModel):
@@ -121,6 +123,7 @@ async def run_info(attempt_id: str, x_stream_key: Key = None):
         stop_rule=ex.get("stop_rule", ""),
         last_cue=cue_out(last) if last else None,
         state=run_state(a),
+        record_demo=a.record_demo,
     )
 
 
@@ -187,6 +190,8 @@ async def run_transition(attempt_id: str, action: Literal["start", "pause", "res
         await cue_runner.on_running(a.id)
     else:
         cue_runner.on_stopped(a.id, ended=target == "ended")
+    if target == "ended" and a.record_demo:
+        await recording.on_ended(a.id)
     return run_state(await get_attempt(a.id))
 
 

@@ -11,12 +11,13 @@ function ExerciseItem({ ex, n }) {
   useEffect(() => { setAttempts(ex.attempts); }, [ex.attempts]);
   const [created, setCreated] = useState(null);
   const [msg, setMsg] = useState("");
+  const [record, setRecord] = useState(false);
   const p = `exercise-${n}`;
 
   const onNew = async () => {
     setMsg("Creating attempt…");
     try {
-      const r = await axios.post(`${API}/exercises/${ex.id}/attempts`);
+      const r = await axios.post(`${API}/exercises/${ex.id}/attempts`, { record_demo: record });
       setAttempts((a) => [...a, r.data.attempt]);
       setCreated(r.data);
       setMsg("");
@@ -36,7 +37,13 @@ function ExerciseItem({ ex, n }) {
       {created ? (
         <OneTimeConfirmation title="New attempt created" created={created} onClose={() => setCreated(null)} />
       ) : (
-        <button type="button" className="bv-btn bv-btn-spaced" onClick={onNew} data-testid={`${p}-new-attempt-button`}>New attempt</button>
+        <>
+          <label className="bv-choice">
+            <input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} data-testid={`${p}-record-demo-checkbox`} />
+            <span>Record this run as a demo (empty space, team only)</span>
+          </label>
+          <button type="button" className="bv-btn bv-btn-spaced" onClick={onNew} data-testid={`${p}-new-attempt-button`}>New attempt</button>
+        </>
       )}
       <p aria-live="polite" role="status" className="bv-cp-msg" data-testid={`${p}-status`}>{msg}</p>
     </li>

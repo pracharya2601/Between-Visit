@@ -85,7 +85,8 @@ export default function RunSession({ info, api }) {
   const onStart = () => {
     motion.requestPermission();
     unlockSpeech();
-    transition("start", "Run started");
+    transition("start", info.record_demo ? "Run started. This run is recorded as a demo." : "Run started");
+    if (info.record_demo && speakRef.current) speak("This run is recorded as a demo.");
   };
   const onRepeat = async () => {
     const text = lastCue.current;
