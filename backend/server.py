@@ -17,6 +17,8 @@ from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, pha
 from cue_runner import resume_running_timers
 from review import router as review_router
 from corrections import router as corrections_router
+from notes import router as notes_router
+from machine import router as machine_router
 from run import router as run_router
 from teach import expire_idle_sessions
 from teach import router as teach_router
@@ -51,6 +53,7 @@ async def ensure_indexes():
     if "attempt_event_id_1" in idx and not idx["attempt_event_id_1"].get("unique"):
         await db.corrections.drop_index("attempt_event_id_1")
     await db.corrections.create_index("attempt_event_id", unique=True)
+    await db.progress_notes.create_index("attempt_id", unique=True)
     await db.attempt_events.create_index([("attempt_id", 1), ("type", 1), ("seq", 1)])
 
 
@@ -141,6 +144,8 @@ app.include_router(run_router)
 app.include_router(teach_router)
 app.include_router(review_router)
 app.include_router(corrections_router)
+app.include_router(notes_router)
+app.include_router(machine_router)
 if os.environ.get("CUE_TEST_HOOK") == "1":
     from test_hooks import router as test_hooks_router
     app.include_router(test_hooks_router)

@@ -222,7 +222,7 @@ async def create_version(route: Route, cps: List[Checkpoint], memory_id: Optiona
     version = RouteVersion(
         route_id=route.id,
         version=route.current_version + 1,
-        checkpoints=[CheckpointSnapshot(id=c.id, order=c.order, name=c.name, photo_url=c.photo_url, landmark_text=c.landmark_text) for c in cps],
+        checkpoints=[CheckpointSnapshot(id=c.id, order=c.order, name=c.name, photo_url=c.photo_url, landmark_text=c.landmark_text, position=c.position) for c in cps],
         author=AUTHOR,
         memory_id=memory_id,
         known_entities=known_entities or [],

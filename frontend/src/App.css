@@ -206,6 +206,23 @@ textarea.bv-input { resize: vertical; }
 .bv-known-svg { fill: #6a1b9a; stroke: #fff; stroke-width: 2; }
 .bv-known-text { font-weight: 800; font-size: 18px; fill: #4a0f6e; paint-order: stroke; stroke: #fff; stroke-width: 4px; }
 
+.bv-machine { margin-top: 0.5rem; }
+.bv-note-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; margin: 0.75rem 0; }
+.bv-note-area { width: 100%; font-family: inherit; line-height: 1.5; }
+.bv-stack-sm { display: grid; gap: 0.5rem; }
+.bv-details summary { cursor: pointer; font-weight: 700; }
+.bv-notes { list-style: none; margin: 0; padding: 0; }
+.bv-note-row { border-top: 2px solid var(--bv-ink); padding: 0.75rem 0; }
+.bv-note-row p { margin: 0 0 0.25rem; }
+.bv-print { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem; }
+.bv-print-footer { border-top: 2px solid var(--bv-ink); margin-top: 2rem; padding-top: 0.75rem; font-size: 0.95rem; }
+@media print {
+  .bv-noprint { display: none !important; }
+  .bv-print { max-width: none; padding: 0; font-size: 12pt; }
+  .bv-print .bv-h1 { font-size: 20pt; }
+  body { background: #fff; }
+}
+
 .bv-footer { border-top: 3px solid var(--bv-line); padding: 1.5rem 0; background: var(--bv-panel); }
 .bv-footer p { margin: 0; font-size: 1rem; }
 

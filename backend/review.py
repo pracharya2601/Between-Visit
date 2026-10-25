@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Response
 
 from corrections import correction_out, entity_facts
 from db import db
+from machine import machine_entity
 from models import Attempt
 from storage import get_object
 
@@ -68,7 +69,7 @@ def _raw(e: Optional[dict]) -> Optional[dict]:
 
 def _item(e: dict, t0: float, **kw) -> dict:
     return {"id": e["id"], "seq": e["seq"], "at": max(0.0, round(_ts(e["t"]) - t0, 1)), "text": "", "reason": None, "category": "event", "pos": None, "raw": None,
-            "would_have_said": False, "entity": None, "correction": None, **kw}
+            "would_have_said": False, "entity": None, "correction": None, "machine": None, **kw}
 
 
 def cue_item(e: dict, t0: float, vision: dict, ctx: dict) -> dict:
@@ -131,19 +132,19 @@ async def load_memory(memory_id: str):
 
 def place(entities: list, ox: float, oz: float) -> list:
     """Known-entity markers: start-relative positions moved onto the view's start point; no position -> listed, not drawn."""
-    return [{**{k: e.get(k) for k in ("id", "label", "side", "added_in", "segment", "position")},
+    return [{**{k: e.get(k) for k in ("id", "label", "side", "added_in", "segment", "position", "machine")},
              "pos": [round(e["position"][0] + ox, 3), round(e["position"][1] + oz, 3)] if e.get("position") else None} for e in entities]
 
 
 async def known_for_review(version: dict, corrections: dict, route_id: str) -> list:
     """The attempt version's known entities plus any confirmed from this attempt into later versions."""
-    out = {e["id"]: e for e in version.get("known_entities") or [] if isinstance(e, dict) and e.get("id")}
+    out = {e["id"]: {**e, "machine": machine_entity(route_id, version["version"], e)} for e in version.get("known_entities") or [] if isinstance(e, dict) and e.get("id")}
     for c in corrections.values():
         if c.get("new_route_version"):
             v = await db.route_versions.find_one({"route_id": route_id, "version": c["new_route_version"]}, {"_id": 0, "known_entities": 1}) or {}
             for e in v.get("known_entities") or []:
                 if isinstance(e, dict) and e.get("from_event_id") == c["attempt_event_id"]:
-                    out.setdefault(e["id"], e)
+                    out.setdefault(e["id"], {**e, "machine": machine_entity(route_id, c["new_route_version"], e)})
     return list(out.values())
 
 
@@ -219,6 +220,10 @@ async def attempt_review(attempt_id: str):
         "routine_hidden": routine,
     }
     entities = await known_for_review(version, corrections, ex.get("route_id"))
+    by_event = {e.get("from_event_id"): e["machine"] for e in entities if e.get("from_event_id")}
+    for i in items:
+        if i["correction"] and i["correction"].get("new_route_version"):
+            i["machine"] = by_event.get(i["id"])
     return {"header": header, "timeline": items, "path": await build_path(doc, version, items, entities)}
 
 

@@ -58,7 +58,8 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-47 | Fixes: "On route." never counts/blocks; held-back cues retried; vision-failure wording | client | 11 |
 | F-48 | Corrections on review items: Confirm / Edit / Dismiss → corrections log; Confirm → next route version with a known entity | practitioner | 11 |
 | F-49 | Version history (route + review pages), "Remove from memory" → next version; attempts carry their own version (new = latest) | practitioner | 11 |
-| F-50 | Confirmed entities as labelled markers in 3D/2D; policy known_entity by label + 2 m or segment | system | 11 |
+| F-51 | AI progress note (Claude Sonnet 5.5, from the attempt log only): draft → edit → approve and save; listed on the client page with Copy/Print | practitioner | 12 |
+| F-52 | Machine view JSON per confirmed entity + GET /api/routes/{id}/memory?version=N | practitioner / systems | 12 |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -72,6 +73,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 9: Relevance policy (spoken cues, no new UI) → F-44. [requirement](phase9/requirement.md) · [journeys](phase9/journeys.md)
 - Phase 10: Start-grace fix + attempt review → F-45..F-46. [requirement](phase10/requirement.md) · [journeys](phase10/journeys.md)
 - Phase 11: Fixes + corrections and route memory versions → F-47..F-50. [requirement](phase11/requirement.md) · [journeys](phase11/journeys.md)
+- Phase 12: Progress note + machine view → F-51..F-52. [requirement](phase12/requirement.md) · [journeys](phase12/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 

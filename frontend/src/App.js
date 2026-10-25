@@ -12,6 +12,7 @@ import ClientRun from "@/pages/ClientRun";
 import TeachWalk from "@/pages/TeachWalk";
 import TeachReview from "@/pages/TeachReview";
 import AttemptReview from "@/pages/AttemptReview";
+import NotePrint from "@/pages/NotePrint";
 
 function Workspace() {
   return (
@@ -37,6 +38,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/run/:id" element={<Layout nav={false}><ClientRun /></Layout>} />
+        <Route path="/notes/:id/print" element={<NotePrint />} />
         <Route path="*" element={<Workspace />} />
       </Routes>
     </BrowserRouter>

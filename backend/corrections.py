@@ -8,6 +8,7 @@ from pymongo.errors import DuplicateKeyError
 
 from cue_policy import SIDES, entity_position
 from db import db
+from machine import machine_entity
 from models import Correction, RouteVersion, now_iso
 from workspace import AUTHOR
 
@@ -125,6 +126,6 @@ async def route_history(route_id: str):
     known = [e for e in (docs[0].get("known_entities") if docs else []) or [] if isinstance(e, dict)]
     return {
         "versions": [{"version": d["version"], "note": default_note(d), "author": d["author"], "created_at": d["created_at"]} for d in docs],
-        "known_entities": known,
+        "known_entities": [{**e, "machine": machine_entity(route_id, docs[0]["version"], e)} for e in known],
         "current_version": docs[0]["version"] if docs else 0,
     }

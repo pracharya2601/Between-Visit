@@ -76,6 +76,7 @@ class CheckpointSnapshot(BaseModel):
     name: str
     photo_url: str
     landmark_text: str
+    position: Optional[List[float]] = None
 
 
 class RouteVersion(BaseDocument):
@@ -208,6 +209,20 @@ class Correction(BaseDocument):
     after: Optional[dict] = None
 
 
+class ProgressNote(BaseDocument):
+    attempt_id: str
+    client_id: str
+    text: str
+    ai_draft: str
+    model: str
+    author: str
+    approved_at: str
+    route_name: str = ""
+    route_version: Optional[int] = None
+    attempt_date: Optional[str] = None
+    client_name: str = ""
+
+
 COLLECTIONS = {
     "practices": Practice,
     "practitioners": Practitioner,
@@ -223,6 +238,7 @@ COLLECTIONS = {
     "photos": Photo,
     "teach_sessions": TeachSession,
     "route_memories": RouteMemory,
+    "progress_notes": ProgressNote,
 }
 
 FOREIGN_KEYS = {
@@ -239,4 +255,5 @@ FOREIGN_KEYS = {
     "route_memories": ["route_id"],
     "attempt_events": ["attempt_id"],
     "corrections": [],
+    "progress_notes": ["client_id"],
 }

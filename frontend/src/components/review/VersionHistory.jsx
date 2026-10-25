@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { API } from "@/lib/api";
+import MachineView from "@/components/review/MachineView";
 
 const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 
@@ -24,6 +25,7 @@ function KnownEntity({ e, routeId, onRemoved }) {
         </span>
       )}
       {error && <span role="alert" className="bv-error"> {error}</span>}
+      {e.machine && <MachineView machine={e.machine} testId={`${p}-machine`} />}
     </li>
   );
 }

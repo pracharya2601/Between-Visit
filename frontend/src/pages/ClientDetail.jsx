@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { API } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import ExerciseList from "@/components/ExerciseList";
+import ClientNotes from "@/components/ClientNotes";
 
 export default function ClientDetail() {
   const { id } = useParams();
@@ -28,6 +29,7 @@ export default function ClientDetail() {
           </section>
           {exercises.status === "ready" && <ExerciseList exercises={exercises.data} />}
           {exercises.status === "error" && <p className="bv-error" role="status">Couldn't load exercises</p>}
+          <ClientNotes clientId={id} />
         </>
       )}
     </div>

@@ -96,3 +96,8 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Corrections (backend/corrections.py): Confirm/Edit/Dismiss per object item, one per item (409), next version copied from latest with change note; Remove from memory; GET /api/routes/{id}/history. Builder saves carry known entities + 3D memory.
 - Review/route pages: version history, known-object markers (purple triangles) in 3D/2D, unpositioned listed.
 - Data: 3D demo route has v2 "chair confirmed" (no position: demo run had no depth) + 1 correction.
+
+## Phase 12 — Progress note + machine view (Oct 2026) DONE
+- backend/notes.py: code-built text fact sheet (reuses review.py), Claude Sonnet 5.5 (NOTE_MODEL) draft with heading validation (1 retry), numbers check, 45 s timeout; progress_notes collection, one per attempt, read-only; client notes list + print view (/notes/{id}/print).
+- backend/machine.py: one machine-view serializer (REPLAN_LEFT/RIGHT, authoritative false) used by review items, version history and GET /api/routes/{id}/memory?version=N (checkpoint positions start-relative for taught routes).
+- Check note deleted after verification; demo data unchanged.

@@ -7,6 +7,7 @@ import Timeline from "@/components/review/Timeline";
 import Path2D from "@/components/review/Path2D";
 import PathLegend from "@/components/review/PathLegend";
 import VersionHistory from "@/components/review/VersionHistory";
+import ProgressNote from "@/components/review/ProgressNote";
 
 const Path3D = lazy(() => import("@/components/review/Path3D"));
 
@@ -65,6 +66,7 @@ export default function AttemptReview() {
   return (
     <div className="bv-stack" data-testid="attempt-review-page">
       <ReviewHeader h={data.header} />
+      <ProgressNote attemptId={id} status={data.header.status} />
       <div className="bv-review">
         <section aria-labelledby="path-heading" className="bv-review-scene" data-testid="review-path">
           <h2 id="path-heading" className="bv-h2">Path</h2>
