@@ -47,7 +47,7 @@ async def main():
             s = wait_end(aid)
             chair, fed = await chair_cues(aid)
             drift = [f - o for f, o in zip(fed, offs)]
-            print(f"== {on}: {s['version_line']} | spoken {s['cues_spoken']} held {s['cues_held_back']} | last cp {s['last_checkpoint']} | frames fed {len(fed)}/{len(offs)} | drift ms max {max(drift)} mean {sum(drift)/len(drift):.0f}")
+            print(f"== {on}: {s['version_line']} | spoken {s['cues_spoken']} held {s['cues_held_back']} | reached {s.get('reached_checkpoints')} | frames fed {len(fed)}/{len(offs)} | drift ms max {max(drift)} mean {sum(drift)/len(drift):.0f}")
             print("   chair cues:", chair)
     if mode == "cap":
         rs = [requests.post(f"{API}/demo/replays", json={"on": "latest"}) for _ in range(4)]

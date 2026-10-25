@@ -58,7 +58,7 @@ function CameraRig({ pos, heading }) {
   return null;
 }
 
-export default function Replay3D({ three, pointsBase, freeLook, testId = "replay-scene", animate = true }) {
+export default function Replay3D({ three, pointsBase, freeLook, reached = [], testId = "replay-scene", animate = true }) {
   const reduced = useReducedMotion();
   const trail = three.run_trail;
   const now = trail.length ? trail[trail.length - 1] : [0, three.floor_y, 0];
@@ -66,10 +66,10 @@ export default function Replay3D({ three, pointsBase, freeLook, testId = "replay
   const spoken = three.dots.filter((d) => d.category === "spoken").length;
   const held = three.dots.length - spoken;
   const follow = animate && !reduced && !freeLook;
-  const label = `3D view of the demo corridor with the replay's trail, ${spoken} spoken cue dots, ${held} held-back cue dots and ${three.entities.length} known objects.`;
+  const label = `3D view of the demo corridor with the replay's trail, checkpoints reached: ${reached.join(", ") || "none yet"}, ${spoken} spoken cue dots, ${held} held-back cue dots and ${three.entities.length} known objects.`;
   return (
     <div className="bv-replay-3d" data-testid={`${testId}-wrap`}>
-      <Scene3D scene={three.scene} pointsUrl={`${pointsBase}`} colorsUrl={three.scene.rgb ? `${pointsBase}?colors=true` : null} label={label} interactive={freeLook}
+      <Scene3D scene={three.scene} pointsUrl={`${pointsBase}`} colorsUrl={three.scene.rgb ? `${pointsBase}?colors=true` : null} label={label} interactive={freeLook} reached={reached}
         testId={testId} controls={freeLook || !animate ? "orbit" : "none"} orbitTarget={freeLook ? [now[0], 0, now[2]] : undefined}
         hint={freeLook || !animate ? "Drag to orbit, pinch or scroll to zoom." : reduced ? "Fixed overview (reduced motion)." : "Camera follows the walk. Turn on Free look to orbit."}>
         {trail.length > 1 && <Line points={trail} color="#d6007a" lineWidth={5} />}

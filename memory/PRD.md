@@ -127,3 +127,8 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - "/" only: navy hero (h1 ~70 px clamp, subline, Try the demo / Open the practice workspace) + lazy 3D corridor loop (15k points, scripted v1 spoken / v2 held-back passes from stored data, no attempts/AI), still-image fallback for reduced motion / no WebGL / failure.
 - Stats band (7.1M CDC, 4,068 ACVREP, 1,700+ ratio, See the research), How it works with real app stills (WebP 15–30 KB, lazy), "What the specialist sees" live rows from att-iiri, closing band.
 - New public read-only endpoints: GET /api/demo/scene, GET /api/demo/points (15k cap). Scene3D gained optional `view` (fixed camera aim).
+
+## Phase 16b — Fixes (2026-10-25)
+- Replay checkpoints: cause was vision never matching Hallway turn / Reception desk on the synthetic frames (near-identical landmark memories, no distinct turn/desk in frames). Replaced frames 7–8 (right turn + RECEPTION sign) and 11–12 (reception desk); replay shows reached checkpoints (filled markers, text, sr summary).
+- Cropped frames 3, 5, 9 (date stamp / phone UI); old blobs unreferenced.
+- Landing hero: 3D ~57% width, 454 px tall, caption card always over the view and alternating (also on still fallback); h1 57–68 px.

@@ -41,6 +41,14 @@ Goal: "/" should read like a product, not a document. Keep the facts, the footer
 ## 5. Closing band
 - REQ-540 [always] A closing band shall show "Try the demo" (→ /demo), then the unchanged footer.
 
+## Fixes after 12c (Phase 16b)
+- REQ-541 [event] When a checkpoint is reached during a replay (a spoken checkpoint cue), the replay screen shall update "Last checkpoint" text, the screen-reader summary, and the 3D marker (reached = filled).
+- REQ-542 [always] "Reached" shall reflect the cue engine (checkpoint cue spoken), never be faked from position alone. If the pipeline doesn't reach checkpoints 2 and 3 on the synthetic frames, the fix belongs in the frames (REQ-543), and the builder shall report the cause.
+- REQ-543 [always] No synthetic demo frame shall show a date stamp or camera UI. Crop or regenerate the affected frames, keeping the same corridor content, the chair between checkpoints 1–2, and visible landmarks for Hallway turn and Reception desk. Regenerated frames pass both person checks; old frames become unservable.
+- REQ-544 [always] After the frame changes, v1 shall still speak the chair (2/2) and v2 shall still hold it back as known (2/2).
+- REQ-545 [always] The landing hero 3D view shall be at least 55% of the hero width and at least 420 px tall on desktop.
+- REQ-546 [always] The caption card shall be visible over the 3D view, alternating between "Spoken: Chair ahead, about 2 metres." and "Held back: Known, chair confirmed in v2"; the still fallback shows the card too. 1440×900 and 1920×1080 stay above the fold for the headline + buttons.
+
 ## Quality requirements
 ```
 Q-72 Tag: Landing.Speed

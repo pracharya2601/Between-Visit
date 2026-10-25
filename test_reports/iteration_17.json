@@ -1,0 +1,59 @@
+{
+  "summary": "Frontend-only validation of Between Visit Phase 16b fixes. All 7 requested check groups pass: (1) /demo v1 replay progresses Entrance -> Hallway turn -> Reception desk, ends on Frame 12 of 12 with 'Replay finished', replay-3d-summary contains 'Reached: Entrance, Hallway turn, Reception desk', scene aria-label lists all three, scrollHeight==1080 (no scroll). (2) Chair story holds: v1 attempt timeline shows 'Chair ahead, about 2 metres.' spoken at 7.5s; v2 attempt review shows three Chair cues suppressed with reason 'Known: chair confirmed in v2' at 6.4/7.8/9.2s and summary 'Known objects: chair'. (3) Replay frames 3, 5, 9 are clean (chair + yellow tactile strip; no date/phone UI). (4) Landing hero at 1920x1080 and 1440x900: visual width 56.8% of .bv-l-hero-grid (>=55%), height 454px (>=420px), h1 68px / 57.12px (within 56-72px clamp), 'Open the practice workspace' bottom 1012.56<=1080 and 738.73<=900 (above fold), hero-caption-card visible inside hero-visual and alternates between 'Spoken: Chair ahead, about 2 metres.' and 'Held back: Known, chair confirmed in v2'. (5) Reduced motion & no-WebGL both render still mode (0 canvases, <img>) with card visible and alternating ~6s (confirmed 2 unique captions within 16s under reduced-motion). (6) Mobile 390 stacks h1(141)->buttons(488)->visual(727), card width 228 < visual 330, no horizontal scroll. (7) /workspace /research /review/48461db6... /demo all 200. Backend review for the v1 attempt also reports checkpoints_reached: 3/3. Four replay attempts I created (d756330a, 141fcae7, 1f60696c, 8ba2dcec) and their 127 attempt_events were deleted after testing; the pre-existing older replays and the 'My room' route were not touched.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "detailed_results": {
+    "replay_v1": {
+      "attempt_id": "1f60696c-4459-4ac3-ac3d-5b0e252df820 (deleted)",
+      "checkpoints_in_order": ["none yet", "Entrance", "Hallway turn", "Reception desk"],
+      "final_last_checkpoint": "Last checkpoint: Reception desk",
+      "final_progress": "Frame 12 of 12 \u00b7 Replay finished",
+      "final_summary": "Current checkpoint: Reception desk. Reached: Entrance, Hallway turn, Reception desk. Cues so far: 5 spoken, 7 held back. Known objects: none.",
+      "scene_aria": "3D view of the demo corridor with the replay's trail, checkpoints reached: Entrance, Hallway turn, Reception desk, 5 spoken cue dots, 7 held-back cue dots and 0 known objects.",
+      "scrollHeight": 1080,
+      "backend_review_checkpoints_reached": "3/3"
+    },
+    "replay_v2": {
+      "attempt_id": "8ba2dcec-1869-4e74-842d-6b311acd4d64 (deleted)",
+      "final_summary": "Current checkpoint: Reception desk. Reached: Entrance, Hallway turn, Reception desk. Cues so far: 4 spoken, 5 held back. Known objects: chair.",
+      "chair_cues_suppressed": [
+        {"at": 6.4, "text": "Chair on your right, about 3 metres.", "reason": "Known: chair confirmed in v2"},
+        {"at": 7.8, "text": "Chair ahead, about 2 metres.", "reason": "Known: chair confirmed in v2"},
+        {"at": 9.2, "text": "Chair ahead, about 1 metre.", "reason": "Known: chair confirmed in v2"}
+      ]
+    },
+    "frames_3_5_9": "Visually clean: chair + yellow tactile strip; no date stamp or phone UI overlays",
+    "landing_1920x1080": {
+      "grid_w": 1200, "visual_w": 681.25, "visual_h": 454.16,
+      "ratio_pct": 56.8, "ratio_ok": true, "h_ok": true,
+      "h1_size_px": 68, "h1_in_56_72": true,
+      "demo_btn_bottom": 924.97, "workspace_btn_bottom": 1012.56, "above_fold": true,
+      "card_cycle": ["Spoken: Chair ahead, about 2 metres.", "Held back: Known, chair confirmed in v2"]
+    },
+    "landing_1440x900": {
+      "grid_w": 1200, "visual_w": 681.25, "visual_h": 454.16,
+      "ratio_pct": 56.8, "h1_size_px": 57.12, "workspace_btn_bottom": 738.73, "above_fold": true
+    },
+    "reduced_motion": {"mode": "still", "canvas_count": 0, "has_img": true, "card_visible": true, "card_alternates_every_~6s": true, "unique_captions_seen": 2},
+    "no_webgl": {"mode": "still", "canvas_count": 0, "has_img": true, "card_visible": true, "initial_card": "Held back: Known, chair confirmed in v2"},
+    "mobile_390": {"h1_top": 141.39, "demo_btn_top": 487.83, "visual_top": 726.61, "visual_w": 330, "card_w": 228.19, "card_smaller_than_visual": true, "horizontal_scroll": false, "stack_order_ok": true},
+    "unchanged_pages": {"/workspace": 200, "/research": 200, "/review/48461db6-54af-4344-a634-30753164eb85": 200, "/demo": 200}
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: The 3D-mode caption card alternation under software WebGL is quite slow (observed ~15-17s between swaps) relative to the still-mode's ~6s cadence. If the spec intends 'alternates every ~6s' for both modes, the 3D variant may be gating card swaps on frame progression rather than a steady timer; consider decoupling or shortening the 3D cycle for parity with the still fallback.",
+    "The /demo page caches the previous completed replay's state briefly on reload before 'Waiting for the first frame...' appears when the attempt POST is slow; non-blocking but easy to misread as 'stuck at Entrance' in headless runs (was the exact symptom in iter 16). Current UI is correct once frames start flowing (~1-2s)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only)", "frontend": "100%"},
+  "test_credentials": "none required",
+  "seed_data_creation": "Created 4 replay attempts via /api/demo/replays (v1 x3, v2 x1). All 4 attempts and their 127 attempt_events deleted after testing. Older replay attempts and the 'My room' route were not touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 16b replay fixes are fully compliant. Important: /demo replay stops progressing frame counter at 'Frame 12 of 12' before all cues finish firing (last Reception desk spoken cue occurs ~24s in; replay-progress ends at '12 of 12 Replay finished' only after that). When polling, do NOT short-circuit on 'Frame 12 of 12 Replaying' - wait for 'Replay finished' OR until the Reception desk checkpoint is announced (~17-18s wallclock, 25s backend-elapsed). Headless WebGL takes ~17-18s per complete v1/v2 replay. Reduced-motion CSS media + canvas.getContext override both reliably trigger the still fallback. Four created replay IDs were cleaned up."
+}

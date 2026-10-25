@@ -76,7 +76,7 @@ function MarkerLabel({ n }) {
   return <sprite position={[0, 0.7, 0]} scale={[0.7, 0.7, 0.7]}><spriteMaterial map={texture} depthTest={false} /></sprite>;
 }
 
-export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactive = false, testId = "teach-scene", overlay = null, controls = "orbit", orbitTarget, view, hint, children }) {
+export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactive = false, testId = "teach-scene", overlay = null, controls = "orbit", orbitTarget, view, hint, reached, children }) {
   const [positions, setPositions] = useState(null);
   const [colors, setColors] = useState(null);
   useEffect(() => {
@@ -104,12 +104,15 @@ export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactiv
         {positions && <PointCloud positions={positions} colors={colorsUrl ? colors : null} />}
         {scene.planes.map((p) => <PlaneMesh key={p.id} plane={p} />)}
         {scene.trail.length > 1 && <Line points={scene.trail} color="#003a70" lineWidth={4} />}
-        {scene.checkpoints.filter((c) => c.position).map((c) => (
-          <group key={c.id} position={c.position}>
-            <mesh><sphereGeometry args={[0.25, 16, 16]} /><meshBasicMaterial color="#004d1a" /></mesh>
-            <MarkerLabel n={c.order} />
-          </group>
-        ))}
+        {scene.checkpoints.filter((c) => c.position).map((c) => {
+          const done = !reached || reached.includes(c.name);
+          return (
+            <group key={c.id} position={c.position} userData={{ reached: done }}>
+              <mesh><sphereGeometry args={[0.25, 16, 16]} /><meshBasicMaterial color={done ? "#004d1a" : "#ffffff"} wireframe={!done} /></mesh>
+              <MarkerLabel n={c.order} />
+            </group>
+          );
+        })}
         {children}
         {controls === "orbit" && <OrbitControls target={orbitTarget || target} makeDefault />}
         {controls === "none" && <Aim position={view?.position} target={view?.target || target} />}

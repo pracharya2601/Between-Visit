@@ -208,6 +208,7 @@ async def replay_state(attempt_id: str):
         "caption": {"seq": spoken[-1]["seq"], "text": spoken[-1]["text"]} if spoken else None,
         "cues_spoken": len(spoken), "cues_held_back": sum(not c.get("spoken") and c.get("suppressed_reason") not in ROUTINE for c in cues),
         "last_checkpoint": next((c["checkpoint"] for c in reversed(spoken) if c.get("checkpoint")), None),
+        "reached_checkpoints": list(dict.fromkeys(c["checkpoint"] for c in spoken if c.get("checkpoint"))),
         "path": [[round(p["x"] - ox, 2), round(p["z"] - oz, 2)] for p in trail],
         "checkpoints": [{"order": c["order"], "name": c["name"], "position": pos.get(c["id"])} for c in sorted(v.get("checkpoints", []), key=lambda c: c["order"])],
         "entities": [{"label": e["entity"]["label"], "side": e["entity"]["side"], "position": e["entity"]["position"]} for e in ents],

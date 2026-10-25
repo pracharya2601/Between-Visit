@@ -31,11 +31,16 @@ export default function HeroVisual() {
   const [card, setCard] = useState(CARDS[1]);
   const [pass, setPass] = useState(1);
   const fail = useCallback(() => { setMode("still"); setCard(CARDS[1]); setPass(1); }, []);
-  const onCard = useCallback((shown, p) => { setCard(shown ? CARDS[p] : null); setPass(p); }, []);
+  const onCard = useCallback((shown, p) => { setCard(CARDS[p]); setPass(p); }, []);
+  useEffect(() => {
+    if (mode !== "still") return;
+    const t = setInterval(() => setPass((p) => { const n = 1 - p; setCard(CARDS[n]); return n; }), 6000);
+    return () => clearInterval(t);
+  }, [mode]);
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !webglOk()) return;
-    const id = (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => { setMode("3d"); setCard(null); });
+    const id = (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => { setMode("3d"); setCard(CARDS[0]); setPass(0); });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
   return (

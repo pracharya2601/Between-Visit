@@ -79,7 +79,7 @@ function Caption({ text }) {
 
 function summary(s) {
   const known = s.three.entities.map((e) => e.label).join(", ") || "none";
-  return `Current checkpoint: ${s.last_checkpoint ?? "none yet"}. Cues so far: ${s.cues_spoken} spoken, ${s.cues_held_back} held back. Known objects: ${known}.`;
+  return `Current checkpoint: ${s.last_checkpoint ?? "none yet"}. Reached: ${(s.reached_checkpoints || []).join(", ") || "none yet"}. Cues so far: ${s.cues_spoken} spoken, ${s.cues_held_back} held back. Known objects: ${known}.`;
 }
 
 function Stage({ s, muted, setMuted, isPublic }) {
@@ -95,7 +95,7 @@ function Stage({ s, muted, setMuted, isPublic }) {
     return (
       <div className="bv-replay bv-replay-3dmode" data-testid="replay-stage">
         <div className="bv-replay-main">
-          <Replay3D three={s.three} pointsBase={`${API}/replays/${s.attempt_id}/points`} freeLook={freeLook} />
+          <Replay3D three={s.three} pointsBase={`${API}/replays/${s.attempt_id}/points`} freeLook={freeLook} reached={s.reached_checkpoints || []} />
           <p className="bv-sr-only" data-testid="replay-3d-summary">{summary(s)}</p>
         </div>
         <div className="bv-replay-right">{frame}{info}</div>
