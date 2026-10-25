@@ -1,10 +1,11 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
 import still from "@/assets/landing/hero-still.webp";
+import { API } from "@/lib/api";
 
 const CARDS = ["Spoken: Chair ahead, about 2 metres.", "Held back: Known, chair confirmed in v2"];
 
 const HeroScene = lazy(() => import("@/components/landing/HeroScene"));
-const LABEL = "Animated 3D model of the demo corridor: a marker walks from the entrance down the hallway, turns right to the reception desk, and passes a chair. On one pass the chair cue is spoken; on the next it is held back because the chair was confirmed in route memory v2.";
+const LABEL = "Animated 3D scan of a room: a marker walks the approved route past numbered checkpoints; cues spoken or held back are shown in the card.";
 
 function webglOk() {
   try {
@@ -13,6 +14,25 @@ function webglOk() {
   } catch {
     return false;
   }
+}
+
+function reviewCards(timeline) {
+  const spoken = timeline.find((i) => i.category === "spoken" && i.kind === "checkpoint" && i.text);
+  const held = timeline.find((i) => i.category === "suppressed" && i.text && i.reason);
+  if (!spoken || !held) return null;
+  const short = (t) => (t.match(/^Checkpoint \d+: [^.]*\./) || [t])[0];
+  return [`Spoken: ${short(spoken.text)}`, `Held back: ${short(held.text)} Reason: ${held.reason.replace(/^Held back: /, "")}.`];
+}
+
+function useCards() {
+  const [cards, setCards] = useState(CARDS);
+  useEffect(() => {
+    fetch(`${API}/demo/scene`).then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => (d.chair || !d.review_attempt_id ? null : fetch(`${API}/attempts/${d.review_attempt_id}/review`).then((r) => (r.ok ? r.json() : null))))
+      .then((rv) => { const real = rv && reviewCards(rv.timeline || []); if (real) setCards(real); })
+      .catch(() => {});
+  }, []);
+  return cards;
 }
 
 class Boundary extends Component {
@@ -27,20 +47,20 @@ function Still() {
 }
 
 export default function HeroVisual() {
+  const cards = useCards();
   const [mode, setMode] = useState("still");
-  const [card, setCard] = useState(CARDS[1]);
   const [pass, setPass] = useState(1);
-  const fail = useCallback(() => { setMode("still"); setCard(CARDS[1]); setPass(1); }, []);
-  const onCard = useCallback((shown, p) => { setCard(CARDS[p]); setPass(p); }, []);
+  const fail = useCallback(() => { setMode("still"); setPass(1); }, []);
+  const onCard = useCallback((shown, p) => setPass(p), []);
   useEffect(() => {
     if (mode !== "still") return;
-    const t = setInterval(() => setPass((p) => { const n = 1 - p; setCard(CARDS[n]); return n; }), 6000);
+    const t = setInterval(() => setPass((p) => 1 - p), 6000);
     return () => clearInterval(t);
   }, [mode]);
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !webglOk()) return;
-    const id = (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => { setMode("3d"); setCard(CARDS[0]); setPass(0); });
+    const id = (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => { setMode("3d"); setPass(0); });
     return () => (window.cancelIdleCallback || clearTimeout)(id);
   }, []);
   return (
@@ -53,9 +73,7 @@ export default function HeroVisual() {
           </Suspense>
         </Boundary>
       ) : <Still />}
-      {card && (
-        <div className={`bv-hero-card ${pass === 0 ? "bv-hero-card-spoken" : "bv-hero-card-held"}`} aria-hidden="true" data-testid="hero-caption-card">{card}</div>
-      )}
+      <div className={`bv-hero-card ${pass === 0 ? "bv-hero-card-spoken" : "bv-hero-card-held"}`} aria-hidden="true" data-testid="hero-caption-card">{cards[pass]}</div>
     </div>
   );
 }

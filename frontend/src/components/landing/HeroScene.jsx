@@ -20,7 +20,7 @@ function at(poses, ms) {
 
 function Loop({ data, onPass }) {
   const marker = useRef();
-  const poses = data.poses;
+  const poses = useMemo(() => data.poses.map((p) => [p[0], p[1], p[2], p[3] - data.poses[0][3]]), [data.poses]);
   const length = poses[poses.length - 1][3] + PAUSE_MS;
   const [state, setState] = useState({ pass: 0, i: 0 });
   const start = useRef(null);
@@ -54,7 +54,7 @@ function Loop({ data, onPass }) {
           <meshBasicMaterial color={YELLOW} wireframe={state.i < c.at} />
         </mesh>
       ))}
-      {shown && (
+      {shown && data.chair && (
         <mesh position={[sight[0], 0.3, sight[1]]}>
           {state.pass === 0 ? <sphereGeometry args={[0.2, 16, 16]} /> : <boxGeometry args={[0.3, 0.3, 0.3]} />}
           <meshBasicMaterial color={state.pass === 0 ? GREEN : AMBER} />

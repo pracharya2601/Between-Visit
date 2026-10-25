@@ -10,8 +10,8 @@ const CDC = "https://www.cdc.gov/vision-health-data/prevalence-estimates/vision-
 const ACVREP = "https://www.acvrep.org/newsitem?id=97";
 const HUMAN_PHOTO = null;
 const STEPS = [
-  { title: "Teach", text: "The specialist walks the route and approves the proposed checkpoints.", img: teachImg, w: 543, h: 564,
-    alt: "Teach-walk review screen: a 3D map of an L-shaped corridor with numbered checkpoint markers 1, 2 and 3 along the walked line." },
+  { title: "Teach", text: "The specialist walks the route and approves the proposed checkpoints.", img: teachImg, w: 543, h: 452,
+    alt: "A 3D scan of a room with numbered checkpoints 1 to 4 along the route." },
   { title: "Practise", text: "The client follows it with smart glasses or a phone. It stays quiet unless a cue helps.", img: runImg, w: 430, h: 860,
     alt: "Client run screen on a phone: status Running and the latest cue in large text, 'Chair ahead, about 2 metres.', above Start, Pause and Repeat cue buttons." },
   { title: "Review", text: "The specialist sees what was spoken, what was held back and why, and corrects the route memory.", img: reviewImg, w: 437, h: 900,
