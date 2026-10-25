@@ -109,6 +109,29 @@ class RouteMemory(BaseDocument):
     point_count: int
     plane_count: int
     trail_m: float
+    colors_path: Optional[str] = None
+    label: Optional[str] = None
+    kind: str = "teach"
+
+
+class ScanSession(BaseDocument):
+    # practitioner 3D-scan upload; the file lives only on local temp disk and is deleted after processing/failure/cancel
+    route_id: str
+    route_name: str
+    filename: str
+    ext: str
+    size: int
+    received: int = 0
+    status: str = "uploading"
+    error: Optional[str] = None
+    unit: str = "m"
+    auto_unit: str = "m"
+    up: str = "+y"
+    auto_up: str = "+y"
+    colour_source: Optional[str] = None
+    point_count: int = 0
+    placed: Optional[dict] = None
+    memory_id: Optional[str] = None
 
 
 class Photo(BaseDocument):

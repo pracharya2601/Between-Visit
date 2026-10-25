@@ -13,7 +13,7 @@ from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
-from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup, phase11_attempt_versions, phase14_demo_renames, phase15_synthetic_model
+from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup, phase11_attempt_versions, phase14_demo_renames, phase15_synthetic_model, phase19_demo_landmarks
 from cue_runner import resume_running_timers
 from review import router as review_router
 from corrections import router as corrections_router
@@ -24,6 +24,9 @@ from replay import router as replay_router
 from run import router as run_router
 from teach import expire_idle_sessions
 from teach import router as teach_router
+from scan import router as scan_router
+from similarity import router as similarity_router
+from scan import sweep_scan_files
 from models import (
     COLLECTIONS,
     FOREIGN_KEYS,
@@ -106,9 +109,11 @@ async def lifespan(_: FastAPI):
     await phase11_attempt_versions()
     await phase14_demo_renames()
     await phase15_synthetic_model()
+    await phase19_demo_landmarks()
     await phase4_cleanup()
     await phase5_cleanup()
     await phase6_cleanup()
+    sweep_scan_files()
     expiry = asyncio.create_task(expire_idle_sessions())
     await end_orphan_replays()
     await resume_running_timers()
@@ -154,6 +159,8 @@ app.include_router(corrections_router)
 app.include_router(notes_router)
 app.include_router(machine_router)
 app.include_router(replay_router)
+app.include_router(scan_router)
+app.include_router(similarity_router)
 if os.environ.get("CUE_TEST_HOOK") == "1":
     from test_hooks import router as test_hooks_router
     app.include_router(test_hooks_router)

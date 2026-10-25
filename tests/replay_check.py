@@ -31,6 +31,9 @@ async def chair_cues(aid):
     cues = await db.attempt_events.find({"attempt_id": aid, "type": "cue"}, {"_id": 0}).sort("seq", 1).to_list(500)
     chair = [(c.get("spoken"), c.get("suppressed_reason"), c.get("text")) for c in cues if "chair" in (str(c.get("entity") or "") + str(c.get("text") or "") + str(c.get("would_have_said") or "")).lower()]
     temp = await db.attempts.find_one({"id": aid}, {"_id": 0, "replay_fed_ms": 1})
+    cps = [(c["checkpoint"], (c.get("details") or {}).get("by")) for c in cues if c.get("spoken") and c.get("checkpoint")]
+    missed = [c["checkpoint"] for c in cues if c.get("suppressed_reason") == "checkpoint_skipped"]
+    print("   checkpoints:", cps, "| missed:", missed)
     return chair, temp["replay_fed_ms"]
 
 
@@ -62,10 +65,21 @@ async def main():
         print("== sweep +25 h:", await sweep_public_replays(datetime.now(timezone.utc) + timedelta(hours=25)))
         left = await db.attempts.count_documents({"id": {"$in": made}})
         print("== remaining of", len(made), "after sweep:", left, "(practitioner replay kept)")
+    if mode == "dump":
+        aid = requests.post(f"{API}/routes/{ROUTE}/replays", json={"on": sys.argv[2] if len(sys.argv) > 2 else "v1"}).json()["attempt_id"]
+        made.append(aid)
+        wait_end(aid)
+        for e in await db.attempt_events.find({"attempt_id": aid, "type": {"$in": ["vision", "cue"]}}, {"_id": 0}).sort("seq", 1).to_list(500):
+            if e["type"] == "vision":
+                r = e.get("result") or {}
+                print(f"  V cp={r.get('checkpoint_match')} unc={r.get('uncertain')} ents={[(x['label'], x['relation'], x.get('distance'), x.get('confidence')) for x in r.get('new_entities', [])]} pos=({e.get('pos_x')},{e.get('pos_z')})")
+            else:
+                print(f"  C spoken={e['spoken']} reason={e.get('suppressed_reason')} text={(e.get('text') or e.get('would_have_said') or '')[:60]} by={(e.get('details') or {}).get('by')}")
     for aid in made:
         await db.attempt_events.delete_many({"attempt_id": aid})
         await db.attempts.delete_one({"id": aid})
     print("deleted check replays:", len(made))
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

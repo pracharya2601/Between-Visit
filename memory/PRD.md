@@ -132,3 +132,23 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Replay checkpoints: cause was vision never matching Hallway turn / Reception desk on the synthetic frames (near-identical landmark memories, no distinct turn/desk in frames). Replaced frames 7–8 (right turn + RECEPTION sign) and 11–12 (reception desk); replay shows reached checkpoints (filled markers, text, sr summary).
 - Cropped frames 3, 5, 9 (date stamp / phone UI); old blobs unreferenced.
 - Landing hero: 3D ~57% width, 454 px tall, caption card always over the view and alternating (also on still fallback); h1 57–68 px.
+
+## Phase 17 (Oct 2026) - checkpoint detection
+- One unusable frame = silent unusable_frame; pause only after 5 s with no usable result (unusable + vision_error together)
+- Position as second signal (fresh pose within 1.0 m of the next checkpoint, route positions only); details.by picture/position
+- Skip one: picture match on next+1 speaks it, logs silent checkpoint_skipped
+- Review: Reached by picture/position, Missed checkpoint line, Blurry frame ignored as routine; header checkpoints_missed; fact sheet lists missed
+- tests/cue_policy_check.py 45 cases; tests/myroom_reeval.py read-only re-evaluation
+
+## Phase 18 (Oct 2026) - create a route from a 3D scan
+- Routes > Create from 3D scan: name, required empty-space checkbox, .glb/.ply/.obj up to 100 MB, 8 MB chunked upload to local temp disk only (deleted after processing/failure/cancel; derived points .npz deleted on save/cancel; 6 h sweep)
+- backend/scan.py (trimesh): 150k points, vertex/texture/height colours, unit + upright detection, floor detection, placement re-centring (Entrance=(0,0,0), facing -Z), save as route_memories kind=scan label "3D scan (uploaded by practitioner)"
+- /scan/:id placement (click/drag/undo/move/remove + keyboard list), browser-rendered eye-height checkpoint pictures through the existing photo check, approve, save v1
+- Shared alignment (cue_policy.alignment/to_route) for build_path, position rule and entity confirmation; scan routes rotate by the first 1.5 m walked
+- Checks: tests/make_scan_meshes.py, tests/scan_check.py, tests/sim_scan_run.py
+
+## Phase 19 (Oct 2026) - distinct-landmark warning
+- backend/similarity.py: text Jaccard >= 0.6 or photo dHash Hamming <= 10 -> "Reads like checkpoint N..." on both cards (builder, teach review, scan pictures); never blocks Approve/Save
+- POST /api/checkpoints/{id}/suggest-distinct: Sonnet with this photo + the other texts (distinct prompt), unapproves; failure -> "AI suggestion unavailable"
+- migrations.phase19_demo_landmarks: demo frames 1/8/12 as photos + 3 distinct texts on checkpoints, v1, v2 (old photos unservable)
+- Distance guard (REQ-605..608, approved): picture matches more than PICTURE_MAX_DIST_M=3.0 m from the matched checkpoint's position (fresh, aligned pose) are ignored and logged as a routine 'picture_too_far' silence; off without positions / stale pose / unaligned scan run. Demo chair story restored

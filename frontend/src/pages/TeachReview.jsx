@@ -4,6 +4,7 @@ import axios from "axios";
 import { API } from "@/lib/api";
 import { useTitle } from "@/hooks/useTitle";
 import { saveBlocker } from "@/lib/saveBlocker";
+import { useSimilarity } from "@/lib/useSimilarity";
 import CheckpointCard from "@/components/CheckpointCard";
 
 const Scene3D = lazy(() => import("@/components/teach/Scene3D"));
@@ -14,6 +15,7 @@ export default function TeachReview() {
   const [session, setSession] = useState(null);
   const [scene, setScene] = useState(null);
   const [cps, setCps] = useState([]);
+  const alike = useSimilarity(cps);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [saved, setSaved] = useState(null);
@@ -63,7 +65,7 @@ export default function TeachReview() {
         <section aria-labelledby="review-list-heading" className="bv-review-list">
           <h2 id="review-list-heading" className="bv-h2">Checkpoints ({cps.length})</h2>
           <ol className="bv-cp-list" data-testid="review-checkpoint-list">
-            {cps.map((cp, i) => <CheckpointCard key={cp.id} cp={cp} index={i} total={cps.length} onChange={replace} onMove={onMove} onRemove={onRemove} />)}
+            {cps.map((cp, i) => <CheckpointCard key={cp.id} cp={cp} index={i} total={cps.length} onChange={replace} onMove={onMove} onRemove={onRemove} alike={alike[cp.id]} />)}
           </ol>
           <section className="bv-panel" aria-labelledby="review-save-heading">
             <h2 id="review-save-heading" className="bv-h2">Save</h2>

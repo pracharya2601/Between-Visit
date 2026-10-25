@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import { useTitle } from "@/hooks/useTitle";
 import CheckpointCard from "@/components/CheckpointCard";
 import { saveBlocker } from "@/lib/saveBlocker";
+import { useSimilarity } from "@/lib/useSimilarity";
 import VersionHistory from "@/components/review/VersionHistory";
 import ReplayLauncher from "@/components/replay/ReplayLauncher";
 
@@ -13,6 +14,7 @@ export default function RouteBuilder() {
   const { id } = useParams();
   const [route, setRoute] = useState(null);
   const [cps, setCps] = useState([]);
+  const alike = useSimilarity(cps);
   const [name, setName] = useState("");
   const [loadError, setLoadError] = useState("");
   const [status, setStatus] = useState("");
@@ -98,7 +100,7 @@ export default function RouteBuilder() {
         <h2 id="checkpoints-heading" className="bv-h2">Checkpoints ({cps.length})</h2>
         <ol className="bv-cp-list" data-testid="checkpoint-list">
           {cps.map((cp, i) => (
-            <CheckpointCard key={cp.id} cp={cp} index={i} total={cps.length} onChange={replace} onMove={onMove} onRemove={onRemove} />
+            <CheckpointCard key={cp.id} cp={cp} index={i} total={cps.length} onChange={replace} onMove={onMove} onRemove={onRemove} alike={alike[cp.id]} />
           ))}
         </ol>
         <button type="button" className="bv-btn" onClick={onAdd} data-testid="add-checkpoint-button">Add checkpoint</button>

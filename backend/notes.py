@@ -44,6 +44,7 @@ def mss(s: float) -> str:
 def fact_sheet(review: dict, corrections: list) -> str:
     h, items = review["header"], review["timeline"]
     cps = [i for i in items if i["kind"] == "checkpoint"]
+    missed = [i for i in items if i["kind"] == "missed"]
     held = Counter(REASON_GROUP.get((i["raw"] or {}).get("policy", {}).get("suppressed_reason"), "Other") for i in items if i["category"] == "suppressed")
     helps = [mss(i["at"]) for i in items if i["kind"] == "help"]
     msgs = [i for i in items if i["kind"] == "message"]
@@ -57,6 +58,7 @@ def fact_sheet(review: dict, corrections: list) -> str:
         f"Elapsed time excluding pauses: {mss(h['elapsed_seconds'])} ({int(round(h['elapsed_seconds']))} seconds)",
         f"Pauses: {pauses}",
         f"Checkpoints reached: {h['checkpoints_reached']} of {h['checkpoints_total']}" + (f" ({'; '.join(i['text'] for i in cps)})" if cps else ""),
+        f"Checkpoints missed: {len(missed)}" + (f" ({'; '.join(i['text'] for i in missed)})" if missed else ""),
         f"Cues spoken: {h['cues_spoken']}",
         f"Cues held back: {h['cues_suppressed']}" + (" (" + "; ".join(f"{k}: {v}" for k, v in held.most_common()) + ")" if held else ""),
         f"Routine silences (not counted as held back): {h['routine_hidden']}",

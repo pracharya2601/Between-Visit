@@ -16,6 +16,9 @@ MIN_CONFIDENCE = 0.6
 BAND_M = {"near": 1.0, "mid": 2.5, "far": 5.0}
 BAND_TEXT = {"near": ", close.", "mid": ", a few steps.", "far": ", further ahead."}
 KNOWN_RADIUS_M = 2.0
+POSITION_RADIUS_M = 1.0
+WALK_ALIGN_M = 1.5
+PICTURE_MAX_DIST_M = 3.0
 SIDE_ANGLE = {"ahead": 0.0, "left": -25.0, "right": 25.0}
 SIDES = {"ahead": ("ahead", "depth_centre"), "left": ("on your left", "depth_left"), "right": ("on your right", "depth_right")}
 
@@ -46,9 +49,12 @@ class Cue:
     trigger: Optional[str] = None
     would_have_said: Optional[str] = None
     details: Optional[dict] = None
+    pre: Optional[list] = None
 
     def as_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d.pop("pre")
+        return d
 
 
 def _latest(*ts):
@@ -111,12 +117,41 @@ def _entity_text(entity: dict, sensors: dict) -> str:
     return f"{_label(entity['label'])[1]} {words}{tail}"
 
 
-def entity_position(pos, origin, heading, side: str, depth) -> Optional[list]:
-    """Start-relative [x, z] of an object: client pos minus run origin, plus depth along heading (left -25°, right +25°)."""
-    if pos is None or origin is None or heading is None or depth is None:
+def alignment(trail_xz: list, scan: bool = False) -> Optional[tuple]:
+    """The one run→route alignment (build_path, position rule, entity confirmation): run start → (0,0,0);
+    on scan routes also rotate so the first WALK_ALIGN_M of walking faces −Z (None until walked)."""
+    if not trail_xz:
+        return None
+    x0, z0 = trail_xz[0]
+    if not scan:
+        return (x0, z0, 1.0, 0.0)
+    for x, z in trail_xz:
+        if math.hypot(x - x0, z - z0) >= WALK_ALIGN_M:
+            phi = -math.pi / 2 - math.atan2(z - z0, x - x0)
+            return (x0, z0, math.cos(phi), math.sin(phi))
+    return None
+
+
+def to_route(align: tuple, x: float, z: float) -> tuple:
+    ox, oz, c, s = align
+    dx, dz = x - ox, z - oz
+    return (c * dx - s * dz, s * dx + c * dz)
+
+
+def run_align(sensors: dict) -> Optional[tuple]:
+    if "align" in sensors:
+        return sensors["align"]
+    o = sensors.get("origin")
+    return (o[0], o[1], 1.0, 0.0) if o else None
+
+
+def entity_position(pos, align, heading, side: str, depth) -> Optional[list]:
+    """Start-relative [x, z] of an object: client pos plus depth along heading (left -25°, right +25°), aligned to the route."""
+    if pos is None or align is None or heading is None or depth is None:
         return None
     a = math.radians(heading + SIDE_ANGLE[side])
-    return [round(pos[0] - origin[0] + math.sin(a) * depth, 2), round(pos[1] - origin[1] - math.cos(a) * depth, 2)]
+    x, z = to_route(align, pos[0] + math.sin(a) * depth, pos[1] - math.cos(a) * depth)
+    return [round(x, 2), round(z, 2)]
 
 
 def _known_match(key: str, position, segment: dict, known: list) -> Optional[dict]:
@@ -135,9 +170,8 @@ def _known_match(key: str, position, segment: dict, known: list) -> Optional[dic
 
 
 def _entity_info(entity: dict, state: PolicyState, sensors: dict, pos) -> dict:
-    origin = sensors.get("origin")
     return {"confidence": entity["confidence"], "side": entity["relation"], "segment": {"from": state.next_index, "to": state.next_index + 1},
-            "position": entity_position(pos, origin, sensors.get("heading_deg"), entity["relation"], _distance(entity, sensors))}
+            "position": entity_position(pos, run_align(sensors), sensors.get("heading_deg"), entity["relation"], _distance(entity, sensors))}
 
 
 def _entity_reason(entity: dict, state: PolicyState, known: list, no_repeat: bool, pos, now: float, sensors: dict) -> Tuple[Optional[str], dict]:
@@ -181,21 +215,78 @@ def _entities(state, entities, exercise, version, sensors, now, rv, pending=None
     return _silent(reasons[0][0], rv, _entity_text(e, sensors), 1, entity=_label(e["label"])[1], details=reasons[0][1]), state
 
 
+def pre_cues(cue: Cue) -> list:
+    """Silent lines logged before a cue: a too-far picture match and/or the checkpoint passed over by a skip."""
+    d = cue.details or {}
+    return list(cue.pre or []) + ([skipped_cue(cue)] if d.get("skipped") and not d.get("retry") else [])
+
+
+def skipped_cue(cue: Cue) -> Cue:
+    """The silent log line for the checkpoint passed over when next+1 matched."""
+    d = cue.details
+    return _silent("checkpoint_skipped", cue.route_version, checkpoint=d["skipped"]["name"], details={"skipped": d["skipped"], "matched": d["matched"]})
+
+
+def _position_hit(idx: int, sensors: dict) -> Optional[float]:
+    """Distance to the next checkpoint when the fresh pose (run start = route start) is within POSITION_RADIUS_M; None if off/far."""
+    cpp, al = (sensors.get("cp_positions") or {}).get(idx), run_align(sensors)
+    if cpp is None or al is None or sensors.get("pos_x") is None or sensors.get("pos_z") is None:
+        return None
+    x, z = to_route(al, sensors["pos_x"], sensors["pos_z"])
+    d = math.hypot(x - cpp[0], z - cpp[1])
+    return round(d, 2) if d <= POSITION_RADIUS_M else None
+
+
+def _picture_dist(idx: int, sensors: dict) -> Optional[float]:
+    """Distance from the fresh, aligned pose to checkpoint idx; None (guard off) without a position, pose or alignment."""
+    cpp, al = (sensors.get("cp_positions") or {}).get(idx), run_align(sensors)
+    if cpp is None or al is None or sensors.get("pos_x") is None or sensors.get("pos_z") is None:
+        return None
+    x, z = to_route(al, sensors["pos_x"], sensors["pos_z"])
+    return math.hypot(x - cpp[0], z - cpp[1])
+
+
+def _checkpoint(state, idx, cps, exercise, rv, now, details, pending_by):
+    cp = cps[idx]
+    text = f"Checkpoint {idx + 1}: {cp['name']}."
+    landmark = (cp.get("landmark_text") or "").strip()
+    if exercise.get("cue_style") == "standard" and landmark:
+        text = f"{text} {landmark}"
+    cue = Cue(text, 2, True, None, checkpoint=cp["name"], route_version=rv, details=details)
+    return _speak(state, cue, now, lambda s: replace(s, next_index=idx + 1), pending=("checkpoint", idx, pending_by))
+
+
 def _usable(state, result, exercise, version, sensors, now, rv):
-    pending, state = state.pending, replace(state, pause_sent=False, last_usable_at=now, pending=None)
     cps = sorted(version.get("checkpoints") or [], key=lambda c: c["order"])
-    match = result.get("checkpoint_match")
+    match, idx, too_far = result.get("checkpoint_match"), state.next_index, None
+    hit = next((i for i in (idx, idx + 1) if i < len(cps) and match == cps[i]["name"]), None)
+    d = _picture_dist(hit, sensors) if hit is not None else None
+    if d is not None and d > PICTURE_MAX_DIST_M:
+        too_far = _silent("picture_too_far", rv, details={"checkpoint": {"order": cps[hit]["order"], "name": match}, "distance_m": round(d, 2), "max_m": PICTURE_MAX_DIST_M})
+        match = None
+    cue, state = _usable_match(state, result, match, cps, exercise, version, sensors, now, rv)
+    if too_far is None:
+        return cue, state
+    if not cue.spoken and cue.suppressed_reason in ("on_route_silent", "nothing_to_say"):
+        return too_far, state
+    return replace(cue, pre=[too_far]), state
+
+
+def _usable_match(state, result, match, cps, exercise, version, sensors, now, rv):
+    pending, state = state.pending, replace(state, pause_sent=False, last_usable_at=now, pending=None)
     idx = state.next_index
-    matched = match is not None and idx < len(cps) and match == cps[idx]["name"]
-    retry = not matched and pending is not None and pending[0] == "checkpoint" and pending[1] == idx and idx < len(cps)
-    if matched or retry:
-        n, cp = idx + 1, cps[idx]
-        text = f"Checkpoint {n}: {cp['name']}."
-        landmark = (cp.get("landmark_text") or "").strip()
-        if exercise.get("cue_style") == "standard" and landmark:
-            text = f"{text} {landmark}"
-        cue = Cue(text, 2, True, None, checkpoint=cp["name"], route_version=rv, details={"retry": True} if retry else None)
-        return _speak(state, cue, now, lambda s: replace(s, next_index=n), pending=("checkpoint", idx))
+    by = None
+    if idx < len(cps):
+        dist = _position_hit(idx, sensors)
+        by = {"by": "picture"} if match == cps[idx]["name"] else {"by": "position", "distance_m": dist} if dist is not None else None
+    retry = by is None and pending is not None and pending[0] == "checkpoint" and pending[1] == idx and idx < len(cps)
+    if by or retry:
+        by = by or (pending[2] if len(pending) > 2 and pending[2] else {"by": "picture"})
+        return _checkpoint(state, idx, cps, exercise, rv, now, {**by, "retry": True} if retry else by, by)
+    if match is not None and idx + 1 < len(cps) and match == cps[idx + 1]["name"]:
+        skipped, hit = cps[idx], cps[idx + 1]
+        details = {"by": "picture", "skipped": {"order": skipped["order"], "name": skipped["name"]}, "matched": {"order": hit["order"], "name": hit["name"]}}
+        return _checkpoint(replace(state, next_index=idx + 1), idx + 1, cps, exercise, rv, now, details, {"by": "picture"})
     if result.get("new_entities"):
         return _entities(state, result["new_entities"], exercise, version, sensors, now, rv, pending)
     if (exercise.get("silence_rules") or {}).get("stay_silent_on_route", True):
@@ -226,5 +317,7 @@ def decide(state: PolicyState, event: dict, exercise: dict, version: dict, senso
         return _silent("vision_error", rv, details={"error": event.get("reason")}), state
     result = event.get("result") or {}
     if result.get("unusable"):
-        return _pause(state, rv, now, "unusable")
+        if _since_usable(state, now) >= NO_USABLE_S:
+            return _pause(state, rv, now, "no_usable_result")
+        return _silent("unusable_frame", rv), state
     return _usable(state, result, exercise, version, sensors, now, rv)

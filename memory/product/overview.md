@@ -81,6 +81,10 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 14: Polish (landing, research, demo renames, nav, accessibility, copy audit), no new features. [requirement](phase14/requirement.md) · [journeys](phase14/journeys.md)
 - Phase 15: 3D demo replay + synthetic corridor model → [requirement](phase15/requirement.md) · [journeys](phase15/journeys.md)
 - Phase 16: Landing page redesign → [requirement](phase16/requirement.md) · [journeys](phase16/journeys.md)
+- Phase 17: Checkpoint detection improvements (from the real "My room" run) → [requirement](phase17/requirement.md) · [journeys](phase17/journeys.md)
+- Phase 18: Create a route from an uploaded 3D scan → [requirement](phase18/requirement.md) · [journeys](phase18/journeys.md)
+- Phase 19: Distinct-landmark warning + demo landmark fix → [requirement](phase19/requirement.md) · [journeys](phase19/journeys.md)
+- Phase 20: Live 3D while walking (teach walk live map + practitioner "Watch live") → [requirement](phase20/requirement.md) · [journeys](phase20/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 

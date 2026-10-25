@@ -11,6 +11,7 @@ import AssignExercise from "@/pages/AssignExercise";
 import ClientRun from "@/pages/ClientRun";
 import TeachWalk from "@/pages/TeachWalk";
 import TeachReview from "@/pages/TeachReview";
+import ScanRoute from "@/pages/ScanRoute";
 import AttemptReview from "@/pages/AttemptReview";
 import NotePrint from "@/pages/NotePrint";
 import ReplayScreen from "@/pages/ReplayScreen";
@@ -41,6 +42,7 @@ function Workspace() {
         <Route path="/routes/:id/assign" element={<AssignExercise />} />
         <Route path="/teach/:id" element={<TeachWalk />} />
         <Route path="/teach/:id/review" element={<TeachReview />} />
+        <Route path="/scan/:id" element={<ScanRoute />} />
         <Route path="/review/:id" element={<AttemptReview />} />
         <Route path="/routes/:id/replay" element={<RouteReplay />} />
       </Routes>

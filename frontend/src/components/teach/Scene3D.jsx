@@ -88,13 +88,13 @@ export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactiv
   }, [colorsUrl]);
 
   const { target, camPos } = useMemo(() => {
-    const t = scene.trail.length ? scene.trail : [[0, 0, 0]];
+    const t = scene.trail.length ? scene.trail : scene.bounds || [[0, 0, 0]];
     const xs = t.map((p) => p[0]), zs = t.map((p) => p[2]);
     const c = [(Math.min(...xs) + Math.max(...xs)) / 2, 0, (Math.min(...zs) + Math.max(...zs)) / 2];
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) + 3;
     const k = window.innerWidth < 700 ? 1.9 : 1.15;
     return { target: c, camPos: [c[0] + span * 0.3, span * k, c[2] + span * k * 0.75] };
-  }, [scene.trail]);
+  }, [scene.trail, scene.bounds]);
   const summary = `3D map of the walk: ${scene.points.toLocaleString()} points (${scene.points_sent.toLocaleString()} shown), ${scene.planes.length} planes, ${scene.metres_walked.toFixed(1)} metres walked, ${scene.checkpoints.length} checkpoints. The checkpoint list gives the same information.`;
 
   return (

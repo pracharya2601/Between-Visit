@@ -1,0 +1,73 @@
+{
+  "summary": "Phase 19 'distinct-landmark warning' fully verified via the frontend across route builder, teach review and scan placement. All 7 requested checks pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "detailed_results": {
+    "route_builder_initial_warnings": {
+      "checkpoint-1-alike-warning": "Reads like checkpoint 2. Add what is different here (a sign, a door, a turn, a sound).",
+      "checkpoint-2-alike-warning": "Reads like checkpoint 1. Add what is different here (a sign, a door, a turn, a sound).",
+      "checkpoint-3-alike-warning": "",
+      "role": "status",
+      "aria-live": "polite",
+      "suggest_distinct_buttons": {"cp1": true, "cp2": true, "cp3": false}
+    },
+    "approve_and_save_despite_warning": {
+      "all_three_approved": true,
+      "save-route-button_enabled_after_approvals": true,
+      "save_result_text": "Saved as version 1"
+    },
+    "live_recheck_on_text_change": {
+      "after_typing_cp1_text_into_cp3": {
+        "cp1": "Reads like checkpoints 2 and 3. Add what is different here (a sign, a door, a turn, a sound).",
+        "cp2": "Reads like checkpoints 1 and 3. Add what is different here (a sign, a door, a turn, a sound).",
+        "cp3": "Reads like checkpoints 1 and 2. Add what is different here (a sign, a door, a turn, a sound)."
+      },
+      "after_revert_cp3": {
+        "cp1": "Reads like checkpoint 2. Add what is different here (a sign, a door, a turn, a sound).",
+        "cp3": ""
+      }
+    },
+    "suggest_distinct_cp2": {
+      "status_text_seen": "Asking AI",
+      "new_text_word_count": 23,
+      "new_text_different_from_before": true,
+      "checkpoint-2-ai-label_text": "Suggested by AI",
+      "approval_state_after_suggest": "Not approved",
+      "warning_cleared_after_new_text": {"cp1": "", "cp2": ""},
+      "re_approve_works": true
+    },
+    "teach_review": {
+      "url": "/teach/158de3c6-559a-432e-99e2-d7db1cb50eb7/review",
+      "checkpoint-1-alike-warning": "Reads like checkpoint 2. Add what is different here (a sign, a door, a turn, a sound).",
+      "checkpoint-2-alike-warning": "Reads like checkpoint 1. Add what is different here (a sign, a door, a turn, a sound).",
+      "suggest_distinct_buttons_present": true
+    },
+    "scan_placement": {
+      "scan_id": "9ecc6334-2608-4b00-a515-6f24b9c24a60",
+      "name": "TEST_P19 scan",
+      "placement_points": [{"x": -3, "z": 4.9}, {"x": -3, "z": 4.8}],
+      "facing": 0,
+      "pictures_ready_in_seconds": 11,
+      "checkpoint-1-alike-warning": "Reads like checkpoint 2. Add what is different here (a sign, a door, a turn, a sound).",
+      "checkpoint-2-alike-warning": "Reads like checkpoint 1. Add what is different here (a sign, a door, a turn, a sound).",
+      "cancelled_cleanly": true
+    },
+    "regression": {
+      "demo_route_id": "276dc5bb-53b0-4734-83d7-c7743052d09d",
+      "cp_warnings": {"cp1": "", "cp2": "", "cp3": ""},
+      "cp_texts_all_distinct": true,
+      "landing_hero_visible": "Route practice between visits, reviewed by the specialist.",
+      "landing_specialist_section_visible": true
+    }
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100% (7/7 request groups)"},
+  "test_credentials": "none required",
+  "seed_data_creation": "Saved 'TEMP P19 builder' as version 1 during Approve/Save test (route id 3c89a7b5-...-7105251d8fca). Main agent said this temp route will be deleted afterwards. One scan 'TEST_P19 scan' (9ecc6334-...) was created and cancelled via scan-cancel-button; it no longer appears in /routes.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Similarity re-check runs ~300ms after text edits are debounced (~500ms), so wait ~1.5-2.5s after .fill() before asserting warning changes. The suggest-distinct Sonnet call takes ~5-15s. Warning text follows the plural grammar 'Reads like checkpoints 2 and 3.' automatically. All data-testids used: checkpoint-N-alike-warning (role=status aria-live=polite), checkpoint-N-suggest-distinct-button, checkpoint-N-ai-label, checkpoint-N-text-input, checkpoint-N-approve-button, save-route-button, scan-cancel-button, scan-empty-space-checkbox, scan-file-input, scan-upload-button, scan-route-name-input, placement-point-{1,2}-{x,z}-input, placement-facing-input, placement-confirm-button."
+}

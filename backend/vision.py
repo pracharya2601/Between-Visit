@@ -51,13 +51,13 @@ def trim_words(text: str, limit: int = MAX_WORDS) -> str:
     return " ".join(words[:limit]) if len(words) > limit else " ".join(words)
 
 
-async def _ask_claude(jpeg: bytes) -> str:
+async def _ask_claude(jpeg: bytes, prompt: str = PROMPT) -> str:
     chat = LlmChat(
         api_key=os.environ["EMERGENT_LLM_KEY"],
         session_id=f"landmark-{uuid.uuid4()}",
         system_message=SYSTEM,
     ).with_model("anthropic", "claude-sonnet-5-5")
-    msg = UserMessage(text=PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(jpeg).decode())])
+    msg = UserMessage(text=prompt, file_contents=[ImageContent(image_base64=base64.b64encode(jpeg).decode())])
     parts = []
     async for ev in chat.stream_message(msg):
         if isinstance(ev, TextDelta):
@@ -67,10 +67,27 @@ async def _ask_claude(jpeg: bytes) -> str:
     return "".join(parts).strip()
 
 
-async def suggest_landmark(jpeg: bytes) -> Tuple[str, Optional[str]]:
-    """Returns ("suggested", text), ("retake", None) or ("unavailable", None)."""
+def distinct_prompt(others: list) -> str:
+    lines = "\n".join(f"- Checkpoint {o}: {t}" for o, t in others) or "- (none)"
+    return (
+        f"Other checkpoints on this route are described like this:\n{lines}\n"
+        "Give one stable landmark description of THIS place, naming what is different here compared with those "
+        "(for example a sign, a door, a turn, a corner, a desk, a change in floor surface or a fixed sound). "
+        "Don't repeat features the others already mention unless you say how they differ here. "
+        f"Use at most {MAX_WORDS} words, as a single sentence, with no preamble. "
+        f"If any person or part of a person is visible, reply exactly \"{RETAKE}\" and describe no one."
+    )
+
+
+FORCE_FAIL = {"on": False}
+
+
+async def suggest_landmark(jpeg: bytes, others: Optional[list] = None) -> Tuple[str, Optional[str]]:
+    """Returns ("suggested", text), ("retake", None) or ("unavailable", None). With others: the distinctiveness prompt."""
     try:
-        reply = await asyncio.wait_for(_ask_claude(jpeg), AI_TIMEOUT_S)
+        if FORCE_FAIL["on"]:
+            raise RuntimeError("forced by test hook")
+        reply = await asyncio.wait_for(_ask_claude(jpeg, distinct_prompt(others) if others is not None else PROMPT), AI_TIMEOUT_S)
     except Exception as exc:
         logger.warning("Landmark suggestion unavailable: %s", type(exc).__name__)
         return "unavailable", None

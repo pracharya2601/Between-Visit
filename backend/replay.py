@@ -15,6 +15,7 @@ from ingest import state_for
 from machine import checkpoint_positions, machine_entity
 from models import AttemptEvent, now_iso
 from review import ROUTINE, build_path, build_timeline, known_for_review, load_memory, memory_response
+from corrections import is_scan
 
 LANDING_POINTS = 15_000
 from sensors import SENSORS, sensors_for
@@ -193,7 +194,7 @@ async def replay_state(attempt_id: str):
     three = None
     if v.get("memory_id"):
         events = await db.attempt_events.find({"attempt_id": attempt_id}, {"_id": 0}).sort("seq", 1).to_list(5000)
-        items, _ = build_timeline(events, datetime.fromisoformat(a["started_at"]).timestamp(), trail, {})
+        items, _ = build_timeline(events, datetime.fromisoformat(a["started_at"]).timestamp(), trail, {}, await is_scan(v))
         path = await build_path(a, v, items, await known_for_review(v, {}, ex.get("route_id")))
         if path["mode"] == "3d":
             fr = rec["frames"][frame] if 0 <= frame < len(rec["frames"]) else {}

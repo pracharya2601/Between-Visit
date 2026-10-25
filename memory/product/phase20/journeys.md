@@ -1,0 +1,11 @@
+# Phase 20 Journeys
+- JRN-250: steps: a simulated teach walk; open the teach page during the walk. expected: the 3D points grow every ~2 s; the marker + heading arrow follow the pose; the trail grows; checkpoint markers appear as proposed; the small live glasses picture updates; counters, Finish and Cancel still work.
+- JRN-251: steps: GET /api/teach/{id}/live-frame twice. expected: the newest JPEG each time, no-store; nothing written to the DB or storage.
+- JRN-252: steps: start a run on the demo (taught) route; the client page shows "Watch live"; open /live/{id}. expected: the saved model, the aligned trail growing, the marker + arrow, cue dots, the purple chair, big caption text, "Live", the live glasses picture; updates within ~1–2 s.
+- JRN-253: steps: a run on a photo route without 3D memory with DPT1 depth. expected: points build live (≤100k, ≤50k sent); after End they're dropped; /live/points returns nothing.
+- JRN-254: steps: a run on a photo route without depth. expected: the trail on a floor grid.
+- JRN-255: steps: end the run. expected: "Run ended" + the review link; live-frame returns nothing.
+- JRN-256: steps: /live for a replay or unknown attempt. expected: 404.
+- JRN-257: steps: the client run page/API during the run. expected: unchanged; no 3D/frames/pose.
+- JRN-258: steps: reduced motion; a screen reader on /live. expected: a fixed overview; the text summary updates.
+- JRN-259: steps: re-run the policy replays + the demo story. expected: unchanged.

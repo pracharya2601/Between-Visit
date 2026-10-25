@@ -214,3 +214,61 @@ async def phase15_synthetic_model():
     result = {"route": rid, "memory": mem.id, "points": len(pts), "replaced": old, "chair_set": chair.modified_count, "recording_adjusted": bool(rec)}
     await db.migrations.insert_one({"id": marker, "created_at": now_iso(), "result": result})
     logger.info("%s: %s", marker, result)
+
+
+DEMO_LANDMARKS = {
+    # source frame (1-based, synthetic recording); Sonnet distinctiveness suggestion edited to ≤25 words and to close-range features
+    "Entrance": (1, "Start of the route: the metal handrail begins on the left wall and the yellow tactile strip starts, leading toward grey push-bar double doors."),
+    "Hallway turn": (8, "A RECEPTION sign with an arrow on the right-hand corner, where the yellow tactile strip branches off to the right into a side corridor."),
+    "Reception desk": (12, "A wooden reception counter across the end of the side corridor, with a RECEPTION sign above the door behind it; the tactile strip ends here."),
+}
+
+
+async def phase19_demo_landmarks():
+    """One-off, user-approved: distinct landmark texts + own-frame photos for the 3D demo route (checkpoints + v1 and v2). Past events untouched."""
+    from models import Photo
+    from storage import get_object, put_object
+    from vision import process_image
+    marker = "phase19-demo-landmarks"
+    if await db.migrations.find_one({"id": marker}):
+        return await _demo_texts_current()
+    route = await db.routes.find_one({"name": DEMO_3D_NEW}, {"_id": 0, "id": 1})
+    rec = await db.recordings.find_one({"route_id": route["id"], "kind": "synthetic"}, {"_id": 0}) if route else None
+    if not rec:
+        return
+    rid, result = route["id"], {"checkpoints": [], "versions": 0, "old_photos_unservable": []}
+    for cp in await db.checkpoints.find({"route_id": rid}, {"_id": 0}).to_list(50):
+        if cp["name"] not in DEMO_LANDMARKS:
+            continue
+        frame, text = DEMO_LANDMARKS[cp["name"]]
+        jpeg, w, h = process_image(await get_object(rec["frames"][frame - 1]["path"]))
+        photo = Photo(checkpoint_id=cp["id"], route_id=rid, storage_path="", width=w, height=h, size=len(jpeg))
+        photo.storage_path = (await put_object(f"checkpoints/{photo.id}.jpg", jpeg, "image/jpeg"))["path"]
+        await db.photos.insert_one(photo.to_mongo())
+        url = f"/api/photos/{photo.id}"
+        await db.checkpoints.update_one({"id": cp["id"]}, {"$set": {"photo_url": url, "landmark_text": text, "ai_suggested": True, "ai_unavailable": False, "updated_at": now_iso()}})
+        r = await db.route_versions.update_many({"route_id": rid}, {"$set": {"checkpoints.$[c].photo_url": url, "checkpoints.$[c].landmark_text": text}}, array_filters=[{"c.id": cp["id"]}])
+        result["versions"] = max(result["versions"], r.modified_count)
+        if cp.get("photo_url"):
+            old = cp["photo_url"].rsplit("/", 1)[1]
+            await db.photos.update_one({"id": old}, {"$set": {"is_deleted": True}})
+            result["old_photos_unservable"].append(old)
+        result["checkpoints"].append({"name": cp["name"], "frame": frame, "photo": photo.id, "words": len(text.split())})
+    await db.migrations.insert_one({"id": marker, "applied_at": now_iso(), "result": result})
+    logger.info("%s: %s", marker, result)
+
+
+async def _demo_texts_current():
+    """Keeps the fixed demo texts in place (checkpoints + all versions); logs only when something changed."""
+    route = await db.routes.find_one({"name": DEMO_3D_NEW}, {"_id": 0, "id": 1})
+    if not route:
+        return
+    changed = []
+    for cp in await db.checkpoints.find({"route_id": route["id"], "name": {"$in": list(DEMO_LANDMARKS)}}, {"_id": 0}).to_list(50):
+        text = DEMO_LANDMARKS[cp["name"]][1]
+        r = await db.route_versions.update_many({"route_id": route["id"]}, {"$set": {"checkpoints.$[c].landmark_text": text}}, array_filters=[{"c.id": cp["id"], "c.landmark_text": {"$ne": text}}])
+        if cp["landmark_text"] != text or r.modified_count:
+            await db.checkpoints.update_one({"id": cp["id"]}, {"$set": {"landmark_text": text, "updated_at": now_iso()}})
+            changed.append(cp["name"])
+    if changed:
+        logger.info("phase19-demo-landmarks texts updated: %s", changed)

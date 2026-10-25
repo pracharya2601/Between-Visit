@@ -21,6 +21,7 @@ VER = {"version": 3, "known_entities": ["bench", "Plant pot"], "checkpoints": [
 
 VER2 = {**VER, "version": 2, "known_entities": [{"label": "chair", "side": "ahead", "segment": {"from": 0, "to": 1}, "position": [0.0, -3.0], "added_in": 2}]}
 POSE = {"pos_x": 2.0, "pos_z": -1.0, "origin": (2.0, -1.0), "heading_deg": 0.0}
+POSE_CP = {**POSE, "cp_positions": {0: (0.0, 0.0), 1: (0.0, -4.0), 2: (5.0, -4.0)}}
 
 
 def ex(style="minimal", silent=True, no_repeat=True):
@@ -47,16 +48,37 @@ def replay(steps, exercise, version=None):
         s = {**(sensors or {}), "last_frame_at": None if frame_t == NOFRAME else T0 + (t if frame_t is None else frame_t)}
         cue, state = decide(state, event, exercise, version, s, T0 + t)
         if cue is not None:
-            out.append((t, cue.text or cue.would_have_said or "", cue.priority, cue.spoken, cue.suppressed_reason))
+            for p in cue.pre or []:
+                out.append((t, p.text or p.would_have_said or "", p.priority, p.spoken, p.suppressed_reason, p.details or {}))
+            out.append((t, cue.text or cue.would_have_said or "", cue.priority, cue.spoken, cue.suppressed_reason, cue.details or {}))
     return out
+
+
+def _norm(row):
+    return tuple(float(v) if isinstance(v, int) and not isinstance(v, bool) else v for v in row)
+
+
+def _same(got, expected):
+    """5-tuple expectations ignore details; a 6th element must be a subset of the cue's details."""
+    if len(got) != len(expected):
+        return False
+    for g, e in zip(got, expected):
+        if _norm(g[:5]) != _norm(e[:5]) or (len(e) > 5 and any(g[5].get(k) != v for k, v in e[5].items())):
+            return False
+    return True
 
 
 P = "Vision unavailable, please pause."
 CASES = {
-    "JRN-117 unusable": (ex(), [(1, vis(unusable=True), None, None)],
-                         [(1, P, 0, True, None)]),
-    "JRN-118 pause_already_sent / re-arm": (ex(), [(1, vis(unusable=True), None, None), (2, vis(unusable=True), None, None), (3, vis(), None, None), (4, vis(unusable=True), None, None)],
-                                            [(1, P, 0, True, None), (2, P, 0, False, "pause_already_sent"), (3, "", None, False, "on_route_silent"), (4, P, 0, True, None)]),
+    "JRN-117/REQ-547 one unusable -> silent unusable_frame, no pause": (ex(), [(1, vis(unusable=True), None, None)],
+                                                                      [(1, "", None, False, "unusable_frame")]),
+    "JRN-118/REQ-548 unusable for 5 s -> pause, pause_already_sent, re-arm": (ex(), [(1, vis(), None, None)] + [(t, vis(unusable=True), None, None) for t in range(2, 8)] + [(8, vis(), None, None)] + [(t, vis(unusable=True), None, None) for t in range(9, 14)],
+                                            [(1, "", None, False, "on_route_silent")] + [(t, "", None, False, "unusable_frame") for t in (2, 3, 4, 5)] + [(6, P, 0, True, None), (7, P, 0, False, "pause_already_sent"), (8, "", None, False, "on_route_silent")]
+                                            + [(t, "", None, False, "unusable_frame") for t in (9, 10, 11, 12)] + [(13, P, 0, True, None)]),
+    "JRN-224/REQ-549 unusable + vision_error count together": (ex(), [(1, vis(), None, None), (2, vis(unusable=True), None, None), (3, ERR, None, None), (4, vis(unusable=True), None, None), (5, ERR, None, None), (6, vis(unusable=True), None, None)],
+                                                                [(1, "", None, False, "on_route_silent"), (2, "", None, False, "unusable_frame"), (3, "", None, False, "vision_error"), (4, "", None, False, "unusable_frame"), (5, "", None, False, "vision_error"), (6, P, 0, True, None)]),
+    "JRN-224 unusable every other frame -> never pauses": (ex(), [(t, vis(unusable=t % 2 == 0), None, None) for t in range(1, 21)],
+                                                           [(t, "", None, False, "unusable_frame" if t % 2 == 0 else "on_route_silent") for t in range(1, 21)]),
     "JRN-119 no frames 2 s": (ex(), [(1, vis(), None, None), (2, TICK, None, 1.9), (3, TICK, None, 1.9), (4, TICK, None, 1.9), (5, TICK, None, 1.9)],
                               [(1, "", None, False, "on_route_silent"), (4, P, 0, True, None)]),
     "JRN-120 vision_error for 5 s": (ex(), [(1, vis(), None, None)] + [(t, ERR, None, None) for t in (2, 3, 4, 5)] + [(5.5, TICK, None, None), (6, ERR, None, None), (6.5, TICK, None, None), (7, ERR, None, None)],
@@ -66,9 +88,49 @@ CASES = {
     "JRN-122 standard cp2 after cp1": (ex("standard"), [(1, vis("Entrance doors"), None, None), (5, vis("Handrail end"), None, None)],
                                        [(1, "Checkpoint 1: Entrance doors. Glass double doors with a steel handrail on the right.", 2, True, None),
                                         (5, "Checkpoint 2: Handrail end. The handrail ends at a square pillar.", 2, True, None)]),
-    "JRN-122 cp3 before cp2 -> no checkpoint cue": (ex("standard"), [(1, vis("Entrance doors"), None, None), (5, vis("Reception desk"), None, None), (9, vis("Handrail end"), None, None)],
-                                                    [(1, "Checkpoint 1: Entrance doors. Glass double doors with a steel handrail on the right.", 2, True, None), (5, "", None, False, "on_route_silent"),
-                                                     (9, "Checkpoint 2: Handrail end. The handrail ends at a square pillar.", 2, True, None)]),
+    "REQ-605 guard: picture of next seen 4 m away -> ignored, silent picture_too_far": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Handrail end"), POSE_CP, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "picture_too_far", {"distance_m": 4.0, "max_m": 3.0, "checkpoint": {"order": 2, "name": "Handrail end"}})]),
+    "REQ-605 guard: picture of next within 3 m (1.5 m) -> reached by picture": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Handrail end"), {**POSE_CP, "pos_z": -3.5}, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "picture"})]),
+    "REQ-605 guard: skip match (next+1) 6.4 m away -> ignored, no skip": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Reception desk"), POSE_CP, None), (9, vis("Handrail end"), {**POSE_CP, "pos_z": -3.5}, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "picture_too_far", {"checkpoint": {"order": 3, "name": "Reception desk"}}),
+                                                     (9, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "picture"})]),
+    "REQ-605 guard: too-far match + chair -> chair spoken, too-far logged first": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Handrail end", ents=[ent("chair")]), POSE_CP, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "picture_too_far"), (5, "Chair ahead, close.", 1, True, None)]),
+    "REQ-606 guard off: no checkpoint positions -> picture counts": (ex(), [(1, vis("Entrance doors"), POSE, None), (5, vis("Handrail end"), POSE, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "picture"})]),
+    "REQ-606 guard off: stale pose -> picture counts": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Handrail end"), {**POSE_CP, "pos_x": None, "pos_z": None}, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "picture"})]),
+    "REQ-606 guard off: scan run not aligned yet (<1.5 m) -> picture counts": (ex(), [(1, vis("Entrance doors"), {**POSE_CP, "align": None}, None), (5, vis("Reception desk"), {**POSE_CP, "align": None}, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None, {"by": "picture"}), (5, "Checkpoint 3: Reception desk.", 2, True, None, {"skipped": {"order": 2, "name": "Handrail end"}})]),
+    "REQ-605 guard on an aligned (rotated 90°) scan run": (ex(), [(1, vis("Entrance doors"), {**POSE_CP, "align": (2.0, -1.0, 0.0, 1.0)}, None), (5, vis("Handrail end"), {**POSE_CP, "align": (2.0, -1.0, 0.0, 1.0)}, None),
+                                                            (9, vis(), {**POSE_CP, "align": (2.0, -1.0, 0.0, 1.0), "pos_x": -2.0, "pos_z": -1.0}, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "picture_too_far"), (9, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position"})]),
+    "JRN-122/REQ-556 cp3 right after cp1 -> skip one, never backwards": (ex("standard"), [(1, vis("Entrance doors"), None, None), (5, vis("Reception desk"), None, None), (9, vis("Handrail end"), None, None)],
+                                                    [(1, "Checkpoint 1: Entrance doors. Glass double doors with a steel handrail on the right.", 2, True, None, {"by": "picture"}),
+                                                     (5, "Checkpoint 3: Reception desk. Long wooden desk facing the doors.", 2, True, None, {"by": "picture", "skipped": {"order": 2, "name": "Handrail end"}, "matched": {"order": 3, "name": "Reception desk"}}),
+                                                     (9, "", None, False, "on_route_silent")]),
+    "REQ-557 next+2 does nothing": (ex(), [(1, vis("Handrail end"), None, None), (5, vis("Reception desk"), None, None)],
+                                    [(1, "Checkpoint 2: Handrail end.", 2, True, None, {"skipped": {"order": 1, "name": "Entrance doors"}}), (5, "Checkpoint 3: Reception desk.", 2, True, None, {"by": "picture"})]),
+    "REQ-557 next+2 from the start -> nothing": (ex(), [(1, vis("Reception desk"), None, None)],
+                                                 [(1, "", None, False, "on_route_silent")]),
+    "REQ-558 held-back skip retried, next reached later": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis("Handrail end"), None, None), (4.5, vis(), None, None), (8, vis("Reception desk"), None, None)],
+                                                           [(1, "Chair ahead, close.", 1, True, None), (2, "Checkpoint 2: Handrail end.", 2, False, "rate_limited", {"skipped": {"order": 1, "name": "Entrance doors"}}),
+                                                            (4.5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "picture", "retry": True}), (8, "Checkpoint 3: Reception desk.", 2, True, None, {"by": "picture"})]),
+    "REQ-552 position reaches next (0.5 m), no picture": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_z": -5.5}, None)],
+                                                          [(1, "Checkpoint 1: Entrance doors.", 2, True, None, {"by": "picture"}), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position", "distance_m": 0.5})]),
+    "REQ-553 position 1.5 m away -> not reached": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_x": 3.5, "pos_z": -5.0}, None)],
+                                                   [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "REQ-554 stale pose -> position rule off": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_x": None, "pos_z": None}, None)],
+                                                [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "REQ-554 no checkpoint positions -> position rule off": (ex(), [(1, vis("Entrance doors"), POSE, None), (5, vis(), {**POSE, "pos_z": -5.5}, None)],
+                                                             [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "REQ-555 position on next beats picture on next+1": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis("Reception desk"), {**POSE_CP, "pos_z": -5.5}, None), (9, vis("Reception desk"), {**POSE_CP, "pos_x": 5.0, "pos_z": -3.0}, None)],
+                                                         [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "picture_too_far"), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position"}),
+                                                          (9, "Checkpoint 3: Reception desk.", 2, True, None, {"by": "picture"})]),
+    "REQ-551 position cue held back keeps by=position on retry": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (2, vis(), {**POSE_CP, "pos_z": -5.5}, None), (4.5, vis(), POSE_CP, None)],
+                                                                  [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (2, "Checkpoint 2: Handrail end.", 2, False, "rate_limited", {"by": "position"}),
+                                                                   (4.5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position", "retry": True})]),
     "JRN-123 chair ahead 1.4 m": (ex(), [(1, vis(ents=[ent("chair")]), {"depth_centre": 1.4}, None)],
                                   [(1, "Chair ahead, about 1.5 metres.", 1, True, None)]),
     "JRN-124 cart right, no depth, mid": (ex(), [(1, vis(ents=[ent("cart", "right", "mid")]), {"depth_right": None, "depth_centre": 2.0}, None)],
@@ -91,8 +153,9 @@ CASES = {
                                     [(t, "On route.", 2, True, None) if t in (0, 20) else (t, "", None, False, "nothing_to_say") for t in range(25)]),
     "JRN-131 rate-limited checkpoint fires later": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis("Entrance doors"), None, None), (4.5, vis("Entrance doors"), None, None)],
                                                     [(1, "Chair ahead, close.", 1, True, None), (2, "Checkpoint 1: Entrance doors.", 2, False, "rate_limited"), (4.5, "Checkpoint 1: Entrance doors.", 2, True, None)]),
-    "JRN-132 p0 bypasses rate limit": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis(unusable=True), None, None), (4.5, vis("Entrance doors"), None, None)],
-                                       [(1, "Chair ahead, close.", 1, True, None), (2, P, 0, True, None), (4.5, "Checkpoint 1: Entrance doors.", 2, False, "rate_limited")]),
+    "JRN-132 p0 bypasses rate limit": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, ERR, None, None), (3, ERR, None, None), (5, vis(unusable=True), None, None), (6, vis(unusable=True), None, None), (7.5, vis("Entrance doors"), None, None)],
+                                       [(1, "Chair ahead, close.", 1, True, None), (2, "", None, False, "vision_error"), (3, "", None, False, "vision_error"), (5, "", None, False, "unusable_frame"), (6, P, 0, True, None),
+                                        (7.5, "Checkpoint 1: Entrance doors.", 2, False, "rate_limited")]),
     "extra: nearest then most confident, 1 metre": (ex(), [(1, vis(ents=[ent("sign stand", "left", "far", 0.95), ent("cart", "right", "near", 0.7), ent("chair", "right", "near", 0.9)]), {"depth_right": 1.1, "depth_left": 4.0}, None)],
                                                     [(1, "Chair on your right, about 1 metre.", 1, True, None)]),
     "extra: on_route false -> nothing_to_say": (ex(silent=False), [(1, vis(on_route=False), None, None)],
@@ -133,8 +196,7 @@ def run_replays():
     fails = 0
     for name, (_, _, expected, *_v) in CASES.items():
         got = runs[0][name]
-        ok = [tuple(map(lambda v: float(v) if isinstance(v, int) and not isinstance(v, bool) else v, g)) for g in got] == \
-             [tuple(map(lambda v: float(v) if isinstance(v, int) and not isinstance(v, bool) else v, e)) for e in expected]
+        ok = _same(got, expected)
         fails += not ok
         spoken = [f"t{g[0]:g} \"{g[1]}\" p{g[2]}" for g in got if g[3]]
         silent = sorted({g[4] for g in got if not g[3]})

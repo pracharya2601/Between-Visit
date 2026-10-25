@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, StringConstraints
 from pymongo.errors import DuplicateKeyError
 
-from cue_policy import SIDES, entity_position
+from cue_policy import SIDES, alignment, entity_position
 from db import db
 from machine import machine_entity
 from models import Correction, RouteVersion, now_iso
@@ -23,7 +23,19 @@ class CorrectionIn(BaseModel):
     side: Optional[Side] = None
 
 
-def entity_facts(ev: dict, vision: Optional[dict], trail: list, reached: int, side: Optional[str] = None) -> dict:
+def trail_align(trail: list, scan: bool = False):
+    return alignment([(p["x"], p["z"]) for p in trail], scan)
+
+
+async def is_scan(version: dict) -> bool:
+    """True when the version's 3D memory came from an uploaded practitioner scan (rotation alignment applies)."""
+    if not version.get("memory_id"):
+        return False
+    mem = await db.route_memories.find_one({"id": version["memory_id"]}, {"_id": 0, "kind": 1})
+    return bool(mem and mem.get("kind") == "scan")
+
+
+def entity_facts(ev: dict, vision: Optional[dict], trail: list, reached: int, side: Optional[str] = None, scan: bool = False) -> dict:
     """Label, side, segment and start-relative position of the object a cue event is about."""
     d = ev.get("details") or {}
     vision = vision or {}
@@ -31,9 +43,8 @@ def entity_facts(ev: dict, vision: Optional[dict], trail: list, reached: int, si
     seen = [e["relation"] for e in (vision.get("result") or {}).get("new_entities", []) if e["label"].strip().lower() == label]
     side = side or d.get("side") or (seen[0] if seen else "ahead")
     pos = (ev["pos_x"], ev["pos_z"]) if ev.get("pos_x") is not None and ev.get("pos_z") is not None else None
-    origin = (trail[0]["x"], trail[0]["z"]) if trail else None
     depth = vision.get(SIDES[side][1])
-    position = entity_position(pos, origin, vision.get("heading_deg"), side, depth if depth and depth > 0 else None)
+    position = entity_position(pos, trail_align(trail, scan), vision.get("heading_deg"), side, depth if depth and depth > 0 else None)
     return {"label": label, "side": side, "segment": d.get("segment") or {"from": reached, "to": reached + 1}, "position": position}
 
 
@@ -76,14 +87,16 @@ async def correct(event_id: str, body: CorrectionIn):
         raise HTTPException(status_code=409, detail={"message": "This item already has a correction", "correction": correction_out(existing)})
     attempt = await db.attempts.find_one({"id": ev["attempt_id"]}, {"_id": 0}) or {}
     ex = await db.exercises.find_one({"id": attempt.get("exercise_id")}, {"_id": 0, "route_id": 1}) or {}
+    version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": attempt.get("route_version")}, {"_id": 0, "memory_id": 1}) or {}
+    scan = await is_scan(version)
     vision = await db.attempt_events.find_one({"id": ev.get("for_event_id")}, {"_id": 0}) if ev.get("for_event_id") else None
     reached = await checkpoints_reached_before(ev)
-    facts = entity_facts(ev, vision, attempt.get("trail") or [], reached)
+    facts = entity_facts(ev, vision, attempt.get("trail") or [], reached, scan=scan)
     before = {"label": facts["label"], "side": facts["side"]}
     after = None
     if body.action != "dismiss":
         side = body.side if body.action == "edit" and body.side else facts["side"]
-        facts = entity_facts(ev, vision, attempt.get("trail") or [], reached, side)
+        facts = entity_facts(ev, vision, attempt.get("trail") or [], reached, side, scan)
         if body.action == "edit" and body.label:
             facts["label"] = body.label.lower()
         after = {"label": facts["label"], "side": facts["side"]}

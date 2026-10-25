@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import { useTitle } from "@/hooks/useTitle";
 import { useApi } from "@/hooks/useApi";
 import TeachStartForm from "@/components/teach/TeachStartForm";
+import ScanStartForm from "@/components/scan/ScanStartForm";
 
 export default function RoutesPage() {
   useTitle("Routes");
@@ -43,6 +44,7 @@ export default function RoutesPage() {
         </div>
       </form>
       <TeachStartForm />
+      <ScanStartForm />
       <div aria-live="polite" role="status" data-testid="routes-status">
         {status === "loading" && <p>Loading routes…</p>}
         {status === "error" && <p className="bv-error">Couldn't load practice data</p>}

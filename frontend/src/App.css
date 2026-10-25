@@ -358,3 +358,20 @@ textarea.bv-input { resize: vertical; }
 }
 .bv-shell:has(.bv-landing2) .bv-header .bv-wrap, .bv-shell:has(.bv-landing2) .bv-footer .bv-wrap { max-width: 1200px; padding: 0 1.5rem; }
 @media (max-width: 900px) { .bv-hero-visual { min-height: 0; } .bv-hero-card { font-size: 0.85rem; padding: 0.45rem 0.7rem; top: 0.5rem; right: 0.5rem; max-width: 70%; border-left-width: 6px; } }
+
+/* Phase 18: create from 3D scan */
+.bv-check { display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0 0.5rem; font-weight: 700; cursor: pointer; }
+.bv-check input { width: 1.5rem; height: 1.5rem; accent-color: var(--bv-ink); }
+.bv-file { display: block; margin: 0.5rem 0; font-size: 1rem; }
+.bv-file:disabled { opacity: 0.55; }
+.bv-progress { width: 100%; height: 1rem; margin-top: 0.75rem; }
+.bv-place-list { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: 0.75rem; }
+.bv-place-row { border: 2px solid var(--bv-line); padding: 0.75rem 1rem; transition: border-color 160ms ease, background-color 160ms ease; }
+.bv-place-row-selected { border-color: var(--bv-ink); background: #f3f1ea; }
+.bv-place-title { font-weight: 700; margin: 0 0 0.5rem !important; }
+.bv-place-xy { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 0.5rem 0; }
+[data-testid="scan-scene"] canvas, [data-testid="scan-placed-scene"] canvas { cursor: crosshair; }
+
+/* Phase 19: distinct-landmark warning */
+.bv-alike { margin: 0.5rem 0 !important; padding: 0.6rem 0.8rem; border-left: 4px solid #b45309; background: #fff7e6; color: #5a2d00; font-weight: 700; }
+.bv-alike-empty { margin: 0 !important; min-height: 0; }

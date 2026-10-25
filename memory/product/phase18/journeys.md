@@ -1,0 +1,12 @@
+# Phase 18 Journeys
+- JRN-231: steps: Routes → "Create from 3D scan", enter a name, try uploading without the checkbox. expected: blocked until "I scanned an empty space (no people)" is ticked.
+- JRN-232: steps: upload a test .glb (a generated room/corridor mesh with vertex or texture colours). expected: ~150k coloured points; the size is shown ("about X × Y m"); the upright model; the temp file is deleted after the points are saved.
+- JRN-233: steps: upload .ply and .obj versions (one in cm, one Z-up). expected: the units are guessed (changeable); upright, or fixed with "Turn upright".
+- JRN-234: steps: upload a file with no geometry, a .txt renamed .glb, and a >100 MB file. expected: a clear rejection each; nothing stored.
+- JRN-235: steps: upload a ~60–100 MB file through the public URL. expected: succeeds (chunked if needed).
+- JRN-236: steps: click the floor for the Entrance, drag the facing, click 3 checkpoints; Undo one, Move one, Remove one, add again. expected: the trail line follows the order; the list mirrors the 3D view.
+- JRN-237: steps: confirm placement. expected: the model is re-centred so Entrance = (0,0,0), facing −Z; rendered pictures appear per checkpoint at eye height facing the next; landmark text "Suggested by AI".
+- JRN-238: steps: replace one render with Upload photo. expected: the same person check + AI.
+- JRN-239: steps: approve all, Save. expected: v1 with the label "3D scan (uploaded by practitioner)"; the memory endpoint has checkpoint positions; it appears in Routes.
+- JRN-240: steps: assign it, then simulate a run whose ARKit heading is rotated 70° from the scan. expected: after 1.5 m the trail is rotated to match; the review/replay path lines up with the corridor; the position signal reaches checkpoints after 1.5 m, not before.
+- JRN-241: steps: re-run the earlier checks (policy replays, demo story). expected: unchanged.

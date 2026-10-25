@@ -7,7 +7,8 @@ from typing import Optional
 import numpy as np
 from fastapi import APIRouter, HTTPException, Response
 
-from corrections import correction_out, entity_facts
+from corrections import correction_out, entity_facts, is_scan
+from cue_policy import alignment, to_route
 from db import db
 from machine import machine_entity
 from models import Attempt
@@ -15,11 +16,12 @@ from storage import get_object
 
 router = APIRouter(prefix="/api")
 
-ROUTINE = {"on_route_silent", "nothing_to_say"}
+ROUTINE = {"on_route_silent", "nothing_to_say", "unusable_frame", "picture_too_far"}
 STEP_M = 0.7
 BROWSER_POINTS = 50_000
 RUN_TEXT = {"start": "Run started", "pause": "Paused", "resume": "Resumed", "end": "Ended"}
-FIXED_REASONS = {"known_entity": "Already part of the route", "pause_already_sent": "Pause message already given", "vision_error": "Vision check failed"}
+FIXED_REASONS = {"known_entity": "Already part of the route", "pause_already_sent": "Pause message already given", "vision_error": "Vision check failed",
+                 "unusable_frame": "Blurry frame, ignored", "picture_too_far": "Seen from too far, ignored"}
 MEMORY_CACHE: dict = {}
 
 
@@ -43,6 +45,9 @@ def plain_reason(reason: str, d: Optional[dict]) -> str:
         return f"Not sure enough (confidence {d.get('confidence', 0):.2f})"
     if reason == "known_entity" and d.get("known_version"):
         return f"Known: {d.get('known_label')} confirmed in v{d['known_version']}"
+    if reason == "checkpoint_skipped":
+        s, m = d.get("skipped") or {}, d.get("matched") or {}
+        return f"Missed checkpoint {s.get('order')}: {s.get('name')} (moved on when {m.get('order')} matched)"
     return FIXED_REASONS.get(reason, reason)
 
 
@@ -78,12 +83,15 @@ def cue_item(e: dict, t0: float, vision: dict, ctx: dict) -> dict:
     raw = {"vision": _raw(v), "policy": {k: e.get(k) for k in ("reason", "suppressed_reason", "priority", "details", "entity", "checkpoint")}}
     extra = {}
     if e.get("entity"):
-        f = entity_facts(e, v, ctx["trail"], ctx["reached"])
+        f = entity_facts(e, v, ctx["trail"], ctx["reached"], scan=ctx["scan"])
         c = ctx["corrections"].get(e["id"])
         extra = {"entity": {"label": f["label"], "side": f["side"]}, "correction": correction_out(c) if c else None}
     if e["spoken"]:
         kind, label = ("checkpoint", "Checkpoint reached") if e.get("checkpoint") else ("unavailable", "Vision unavailable") if e.get("priority") == 0 else ("cue", "Spoken cue")
-        return _item(e, t0, kind=kind, label=label, text=e["text"], category="spoken", pos=pos, raw=raw, **extra)
+        by = (e.get("details") or {}).get("by") if kind == "checkpoint" else None
+        return _item(e, t0, kind=kind, label=label, text=e["text"], reason=f"Reached by {by}" if by else None, category="spoken", pos=pos, raw=raw, **extra)
+    if e["suppressed_reason"] == "checkpoint_skipped":
+        return _item(e, t0, kind="missed", label="Missed checkpoint", text=plain_reason("checkpoint_skipped", e.get("details")), category="event", pos=pos, raw=raw)
     if e["suppressed_reason"] == "vision_error":
         return _item(e, t0, kind="suppressed", label="Not spoken", text="Vision check failed (stayed silent)", category="suppressed", pos=pos, raw=raw)
     said = e.get("would_have_said")
@@ -91,11 +99,11 @@ def cue_item(e: dict, t0: float, vision: dict, ctx: dict) -> dict:
                  reason=plain_reason(e["suppressed_reason"], e.get("details")), category="suppressed", pos=pos, raw=raw, **extra)
 
 
-def build_timeline(events: list, t0: float, trail: Optional[list] = None, corrections: Optional[dict] = None):
+def build_timeline(events: list, t0: float, trail: Optional[list] = None, corrections: Optional[dict] = None, scan: bool = False):
     vision = {e["id"]: e for e in events if e["type"] in ("vision", "vision_error")}
     items, routine = [], 0
     reached: set = set()
-    ctx = {"trail": trail or [], "corrections": corrections or {}, "reached": 0}
+    ctx = {"trail": trail or [], "corrections": corrections or {}, "reached": 0, "scan": scan}
     for e in events:
         ty = e["type"]
         ctx["reached"] = len(reached)
@@ -158,10 +166,15 @@ async def build_path(doc: dict, version: dict, items: list, entities: Optional[l
         teach = meta.get("trail") or []
         y = teach[0][1] if teach else 0.0
         aligned = bool(run_trail and teach)
-        ox, oz = (teach[0][0] - run_trail[0][0], teach[0][2] - run_trail[0][1]) if aligned else (0.0, 0.0)
+        al = alignment(run_trail, mem.get("kind") == "scan") or alignment(run_trail)
+        tx, tz = (teach[0][0], teach[0][2]) if aligned else (run_trail[0] if run_trail else (0.0, 0.0))
+
+        def to_view(x, z):
+            rx, rz = to_route(al, x, z) if al else (x, z)
+            return [round(rx + tx, 3), round(rz + tz, 3)]
         for i in dots:
             if i["pos"]:
-                i["pos"] = [round(i["pos"][0] + ox, 3), round(i["pos"][1] + oz, 3)]
+                i["pos"] = to_view(*i["pos"])
         ids = [c["id"] for c in version.get("checkpoints", [])]
         pos = {c["id"]: c.get("position") for c in await db.checkpoints.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "position": 1}).to_list(100)}
         scene = {
@@ -170,7 +183,7 @@ async def build_path(doc: dict, version: dict, items: list, entities: Optional[l
             "checkpoints": [{"id": c["id"], "order": c["order"], "name": c["name"], "position": pos.get(c["id"])} for c in version.get("checkpoints", [])],
         }
         t0 = (teach[0][0], teach[0][2]) if teach else (0.0, 0.0)
-        return {"mode": "3d", "aligned": aligned, "floor_y": y, "run_trail": [[x + ox, y + 0.05, z + oz] for x, z in run_trail], "scene": scene, "entities": place(entities, *t0)}
+        return {"mode": "3d", "aligned": aligned, "floor_y": y, "run_trail": [[v[0], y + 0.05, v[1]] for v in (to_view(x, z) for x, z in run_trail)], "scene": scene, "entities": place(entities, *t0)}
     if run_trail:
         return {"mode": "2d", "source": "trail", "trail": [list(p) for p in run_trail], "entities": place(entities, *run_trail[0])}
     motion = doc.get("motion") or []
@@ -207,7 +220,7 @@ async def attempt_review(attempt_id: str):
     events = await db.attempt_events.find({"attempt_id": a.id}, {"_id": 0}).sort("seq", 1).to_list(5000)
     ids = [e["id"] for e in events if e["type"] == "cue" and e.get("entity")]
     corrections = {c["attempt_event_id"]: c for c in await db.corrections.find({"attempt_event_id": {"$in": ids}}, {"_id": 0}).to_list(1000)}
-    items, routine = build_timeline(events, _ts(a.started_at), doc.get("trail") or [], corrections)
+    items, routine = build_timeline(events, _ts(a.started_at), doc.get("trail") or [], corrections, await is_scan(version))
     cues = [e for e in events if e["type"] == "cue"]
     header = {
         "client": client.get("display_name", ""), "route": route.get("name", ""), "version": a.route_version, "route_id": ex.get("route_id"), "goal": ex.get("goal", ""),
@@ -216,8 +229,9 @@ async def attempt_review(attempt_id: str):
         "checkpoints_total": len(version.get("checkpoints", [])),
         "help_count": sum(e["type"] == "help" for e in events),
         "cues_spoken": sum(e["spoken"] for e in cues),
-        "cues_suppressed": sum(not e["spoken"] and e.get("suppressed_reason") not in ROUTINE for e in cues),
+        "cues_suppressed": sum(not e["spoken"] and e.get("suppressed_reason") not in ROUTINE | {"checkpoint_skipped"} for e in cues),
         "routine_hidden": routine,
+        "checkpoints_missed": [e["checkpoint"] for e in cues if e.get("suppressed_reason") == "checkpoint_skipped"],
     }
     entities = await known_for_review(version, corrections, ex.get("route_id"))
     by_event = {e.get("from_event_id"): e["machine"] for e in entities if e.get("from_event_id")}

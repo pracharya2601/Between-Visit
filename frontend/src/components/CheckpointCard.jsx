@@ -28,7 +28,7 @@ function useDebouncedPatch(cp, onChange) {
   return { name, text, edit, flush, dirty: name !== cp.name || text !== cp.landmark_text };
 }
 
-export default function CheckpointCard({ cp, index, total, onChange, onMove, onRemove }) {
+export default function CheckpointCard({ cp, index, total, onChange, onMove, onRemove, alike }) {
   const { name, text, edit, flush, dirty } = useDebouncedPatch(cp, onChange);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -67,6 +67,17 @@ export default function CheckpointCard({ cp, index, total, onChange, onMove, onR
     }
   });
 
+  const onSuggestDistinct = () => run("Asking AI for a description that sets this checkpoint apart…", async () => {
+    try {
+      await flush();
+      const r = await axios.post(`${API}/checkpoints/${cp.id}/suggest-distinct`);
+      onChange(r.data.checkpoint);
+      setMsg(r.data.ai_status === "suggested" ? "New description suggested by AI. Check it, then approve again." : r.data.message);
+    } catch {
+      setMsg("AI suggestion unavailable");
+    }
+  });
+
   return (
     <li className={`bv-cp ${approved ? "bv-cp-approved" : ""}`} data-testid={p}>
       <fieldset className="bv-cp-fieldset">
@@ -94,16 +105,22 @@ export default function CheckpointCard({ cp, index, total, onChange, onMove, onR
           <label htmlFor={`${p}-text`} className="bv-label">
             Landmark text {cp.ai_suggested && !dirty && <span className="bv-tag bv-tag-ai" data-testid={`${p}-ai-label`}>Suggested by AI</span>}
           </label>
-          <textarea id={`${p}-text`} rows={3} className="bv-input" value={text} onChange={(e) => edit("landmark_text", e.target.value)} onBlur={() => flush().catch(() => {})} data-testid={`${p}-text-input`} />
+          <textarea id={`${p}-text`} rows={3} className="bv-input" value={text} onChange={(e) => edit("landmark_text", e.target.value)} onBlur={() => flush().catch(() => {})} aria-describedby={alike ? `${p}-alike` : undefined} data-testid={`${p}-text-input`} />
+          <p id={`${p}-alike`} role="status" aria-live="polite" className={alike ? "bv-alike" : "bv-alike-empty"} data-testid={`${p}-alike-warning`}>{alike?.message || ""}</p>
+          {alike && cp.photo_url && (
+            <button type="button" className="bv-btn" disabled={busy} onClick={onSuggestDistinct} data-testid={`${p}-suggest-distinct-button`}>Suggest a different description</button>
+          )}
         </div>
         <p aria-live="polite" role="status" className="bv-cp-msg" data-testid={`${p}-status`}>{msg}</p>
         <div className="bv-btn-row">
           <button type="button" className="bv-btn bv-btn-approve" disabled={busy || !canApprove || approved} onClick={onApprove} data-testid={`${p}-approve-button`}>
             {approved ? "Approved" : "Approve"}
           </button>
-          <button type="button" className="bv-btn" disabled={busy || index === 0} onClick={() => onMove(cp.id, "up")} aria-label={`Move checkpoint ${n} up`} data-testid={`${p}-move-up-button`}>Move up</button>
-          <button type="button" className="bv-btn" disabled={busy || index === total - 1} onClick={() => onMove(cp.id, "down")} aria-label={`Move checkpoint ${n} down`} data-testid={`${p}-move-down-button`}>Move down</button>
-          <button type="button" className="bv-btn bv-btn-danger" disabled={busy} onClick={() => onRemove(cp.id)} aria-label={`Remove checkpoint ${n}`} data-testid={`${p}-remove-button`}>Remove</button>
+          {onMove && <>
+            <button type="button" className="bv-btn" disabled={busy || index === 0} onClick={() => onMove(cp.id, "up")} aria-label={`Move checkpoint ${n} up`} data-testid={`${p}-move-up-button`}>Move up</button>
+            <button type="button" className="bv-btn" disabled={busy || index === total - 1} onClick={() => onMove(cp.id, "down")} aria-label={`Move checkpoint ${n} down`} data-testid={`${p}-move-down-button`}>Move down</button>
+            <button type="button" className="bv-btn bv-btn-danger" disabled={busy} onClick={() => onRemove(cp.id)} aria-label={`Remove checkpoint ${n}`} data-testid={`${p}-remove-button`}>Remove</button>
+          </>}
         </div>
       </fieldset>
     </li>
