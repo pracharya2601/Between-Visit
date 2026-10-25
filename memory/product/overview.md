@@ -79,6 +79,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 12: Progress note + machine view → F-51..F-52. [requirement](phase12/requirement.md) · [journeys](phase12/journeys.md)
 - Phase 13: Demo recording + replay → F-53..F-56. [requirement](phase13/requirement.md) · [journeys](phase13/journeys.md)
 - Phase 14: Polish (landing, research, demo renames, nav, accessibility, copy audit), no new features. [requirement](phase14/requirement.md) · [journeys](phase14/journeys.md)
+- Phase 15: 3D demo replay + synthetic corridor model → [requirement](phase15/requirement.md) · [journeys](phase15/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 

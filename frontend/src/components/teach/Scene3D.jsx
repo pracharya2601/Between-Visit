@@ -21,13 +21,14 @@ function heightColours(pos) {
   return out;
 }
 
-function PointCloud({ positions }) {
+function PointCloud({ positions, colors }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(heightColours(positions), 3));
+    const rgb = colors && colors.length === positions.length ? Float32Array.from(colors, (v) => v / 255) : heightColours(positions);
+    g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
     return g;
-  }, [positions]);
+  }, [positions, colors]);
   return <points geometry={geometry}><pointsMaterial size={0.05} vertexColors /></points>;
 }
 
@@ -65,11 +66,16 @@ function MarkerLabel({ n }) {
   return <sprite position={[0, 0.7, 0]} scale={[0.7, 0.7, 0.7]}><spriteMaterial map={texture} depthTest={false} /></sprite>;
 }
 
-export default function Scene3D({ scene, pointsUrl, label, interactive = false, testId = "teach-scene", overlay = null, children }) {
+export default function Scene3D({ scene, pointsUrl, colorsUrl, label, interactive = false, testId = "teach-scene", overlay = null, controls = "orbit", orbitTarget, hint, children }) {
   const [positions, setPositions] = useState(null);
+  const [colors, setColors] = useState(null);
   useEffect(() => {
     fetch(pointsUrl).then((r) => r.arrayBuffer()).then((b) => setPositions(new Float32Array(b))).catch(() => setPositions(new Float32Array(0)));
   }, [pointsUrl]);
+  useEffect(() => {
+    if (!colorsUrl) return;
+    fetch(colorsUrl).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && setColors(new Uint8Array(b))).catch(() => setColors(null));
+  }, [colorsUrl]);
 
   const { target, camPos } = useMemo(() => {
     const t = scene.trail.length ? scene.trail : [[0, 0, 0]];
@@ -83,9 +89,9 @@ export default function Scene3D({ scene, pointsUrl, label, interactive = false, 
 
   return (
     <div className="bv-scene" role={interactive ? "group" : "img"} aria-label={label || summary} data-testid={testId}>
-      <Canvas camera={{ position: camPos, fov: 50 }} data-testid={`${testId === "teach-scene" ? "teach" : testId}-canvas`}>
+      <Canvas dpr={[1, 1.5]} camera={{ position: camPos, fov: 50 }} data-testid={`${testId === "teach-scene" ? "teach" : testId}-canvas`}>
         <ambientLight />
-        {positions && <PointCloud positions={positions} />}
+        {positions && <PointCloud positions={positions} colors={colorsUrl ? colors : null} />}
         {scene.planes.map((p) => <PlaneMesh key={p.id} plane={p} />)}
         {scene.trail.length > 1 && <Line points={scene.trail} color="#003a70" lineWidth={4} />}
         {scene.checkpoints.filter((c) => c.position).map((c) => (
@@ -95,10 +101,10 @@ export default function Scene3D({ scene, pointsUrl, label, interactive = false, 
           </group>
         ))}
         {children}
-        <OrbitControls target={target} makeDefault />
+        {controls === "orbit" && <OrbitControls target={orbitTarget || target} makeDefault />}
       </Canvas>
       {overlay}
-      <p className="bv-hint" aria-hidden="true">Drag to orbit, pinch or scroll to zoom.</p>
+      <p className="bv-hint" aria-hidden="true">{hint ?? "Drag to orbit, pinch or scroll to zoom."}</p>
     </div>
   );
 }

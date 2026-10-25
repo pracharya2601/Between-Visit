@@ -13,7 +13,7 @@ from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
-from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup, phase11_attempt_versions, phase14_demo_renames
+from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup, phase11_attempt_versions, phase14_demo_renames, phase15_synthetic_model
 from cue_runner import resume_running_timers
 from review import router as review_router
 from corrections import router as corrections_router
@@ -105,6 +105,7 @@ async def lifespan(_: FastAPI):
     await phase4_model_updates()
     await phase11_attempt_versions()
     await phase14_demo_renames()
+    await phase15_synthetic_model()
     await phase4_cleanup()
     await phase5_cleanup()
     await phase6_cleanup()

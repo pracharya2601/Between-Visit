@@ -1,4 +1,5 @@
 import logging
+import json
 import re
 
 from db import db
@@ -127,5 +128,89 @@ async def phase14_demo_renames():
         result["route_3d"] = rid
     r2 = await db.routes.update_one({"name": DEMO_2D_OLD}, {"$set": {"name": DEMO_2D_NEW}})
     result["route_2d_renamed"] = r2.modified_count
+    await db.migrations.insert_one({"id": marker, "created_at": now_iso(), "result": result})
+    logger.info("%s: %s", marker, result)
+
+
+DEMO_CHAIR = (0.6, -5.0)
+
+
+def synthetic_corridor(seed: int = 15):
+    """~40k coloured points + planes for the demo corridor: +Y up, -Z north, +X east, start-relative."""
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    parts = []
+
+    def box(n, x, y, z, rgb, jitter=10):
+        p = np.column_stack([rng.uniform(*x, n), rng.uniform(*y, n), rng.uniform(*z, n)])
+        c = np.clip(np.array(rgb) + rng.integers(-jitter, jitter + 1, (n, 3)), 0, 255)
+        parts.append((p, c))
+
+    floor, wall, rail = (178, 170, 156), (232, 228, 218), (168, 172, 178)
+    box(7000, (-0.9, 0.9), (0, 0), (-10.9, 0.5), floor)
+    box(7000, (-0.9, 7.2), (0, 0), (-10.9, -9.1), floor)
+    box(1400, (-0.15, 0.15), (0.002, 0.002), (-10.0, 0.5), (226, 186, 30), 8)
+    box(1100, (-0.15, 6.4), (0.002, 0.002), (-10.15, -9.85), (226, 186, 30), 8)
+    box(5000, (-0.9, -0.9), (0, 2.6), (-10.9, 0.5), wall)
+    box(4200, (0.9, 0.9), (0, 2.6), (-9.1, 0.5), wall)
+    box(3800, (-0.9, 7.2), (0, 2.6), (-10.9, -10.9), wall)
+    box(2900, (0.9, 7.2), (0, 2.6), (-9.1, -9.1), wall)
+    box(900, (7.2, 7.2), (0, 2.6), (-10.9, -9.1), wall)
+    box(900, (-0.85, -0.82), (0.88, 0.92), (-10.85, 0.5), rail, 20)
+    box(700, (-0.85, 7.2), (0.88, 0.92), (-10.85, -10.82), rail, 20)
+    box(1300, (6.4, 7.1), (1.0, 1.0), (-10.7, -9.3), (150, 101, 52))
+    box(1200, (6.4, 6.4), (0, 1.0), (-10.7, -9.3), (128, 84, 42))
+    cx, cz = DEMO_CHAIR
+    box(500, (cx - 0.22, cx + 0.22), (0.45, 0.47), (cz - 0.22, cz + 0.22), (32, 32, 34), 6)
+    box(400, (cx + 0.2, cx + 0.22), (0.45, 0.9), (cz - 0.22, cz + 0.22), (32, 32, 34), 6)
+    for dx in (-0.2, 0.2):
+        for dz in (-0.2, 0.2):
+            box(60, (cx + dx - 0.015, cx + dx + 0.015), (0, 0.45), (cz + dz - 0.015, cz + dz + 0.015), (40, 40, 44), 6)
+    pts = np.concatenate([p for p, _ in parts]) + rng.normal(0, 0.012, (sum(len(p) for p, _ in parts), 3))
+    cols = np.concatenate([c for _, c in parts]).astype(np.uint8)
+    half = 3.14159265 / 2
+    planes = [
+        {"id": "floorN", "class": "floor", "align": "horizontal", "center": [0, 0, -5.2], "extent": [1.8, 11.4], "rotation_y": 0},
+        {"id": "floorE", "class": "floor", "align": "horizontal", "center": [3.15, 0, -10], "extent": [8.1, 1.8], "rotation_y": 0},
+        {"id": "wallW", "class": "wall", "align": "vertical", "center": [-0.9, 1.3, -5.2], "extent": [11.4, 2.6], "rotation_y": half},
+        {"id": "wallE", "class": "wall", "align": "vertical", "center": [0.9, 1.3, -4.3], "extent": [9.6, 2.6], "rotation_y": half},
+        {"id": "wallN", "class": "wall", "align": "vertical", "center": [3.15, 1.3, -10.9], "extent": [8.1, 2.6], "rotation_y": 0},
+        {"id": "wallS", "class": "wall", "align": "vertical", "center": [4.05, 1.3, -9.1], "extent": [6.3, 2.6], "rotation_y": 0},
+        {"id": "wallEnd", "class": "wall", "align": "vertical", "center": [7.2, 1.3, -10], "extent": [1.8, 2.6], "rotation_y": half},
+    ]
+    trail = [[0.0, 0.0, round(-0.25 * i, 2)] for i in range(41)] + [[round(0.25 * i, 2), 0.0, -10.0] for i in range(1, 25)]
+    return pts.astype("<f4"), cols, planes, trail
+
+
+async def phase15_synthetic_model():
+    """One-off, user-approved: synthetic 3D memory for the 3D demo route (v1 + v2), v2 chair position, recording depth tweak."""
+    from models import RouteMemory
+    from storage import put_object
+    marker = "phase15-synthetic-model"
+    if await db.migrations.find_one({"id": marker}):
+        return
+    route = await db.routes.find_one({"name": DEMO_3D_NEW}, {"_id": 0, "id": 1})
+    if not route:
+        return
+    rid = route["id"]
+    pts, cols, planes, trail = synthetic_corridor()
+    base = f"memory/synthetic-{rid}"
+    p1 = (await put_object(f"{base}/points.f32", pts.tobytes(), "application/octet-stream")).get("path") or f"between-visit/{base}/points.f32"
+    p3 = (await put_object(f"{base}/colors.u8", cols.tobytes(), "application/octet-stream")).get("path") or f"between-visit/{base}/colors.u8"
+    meta = json.dumps({"planes": planes, "trail": trail, "metres_walked": 16.0}).encode()
+    p2 = (await put_object(f"{base}/memory.json", meta, "application/json")).get("path") or f"between-visit/{base}/memory.json"
+    mem = RouteMemory(route_id=rid, teach_session_id="synthetic", points_path=p1, json_path=p2, point_count=len(pts), plane_count=len(planes), trail_m=16.0)
+    doc = {**mem.to_mongo(), "colors_path": p3, "label": "Synthetic 3D model"}
+    await db.route_memories.insert_one(doc)
+    old = await db.route_versions.distinct("memory_id", {"route_id": rid})
+    await db.route_versions.update_many({"route_id": rid}, {"$set": {"memory_id": mem.id}})
+    cps = {"Entrance": [0.0, 0.0, 0.0], "Hallway turn": [0.0, 0.0, -9.9], "Reception desk": [6.0, 0.0, -10.0]}
+    for name, p in cps.items():
+        await db.checkpoints.update_one({"route_id": rid, "name": name}, {"$set": {"position": p}})
+    chair = await db.route_versions.update_one({"route_id": rid, "version": 2, "known_entities.label": "chair"}, {"$set": {"known_entities.$.position": list(DEMO_CHAIR)}})
+    rec = await db.recordings.find_one({"route_id": rid, "kind": "synthetic"}, {"_id": 0, "id": 1, "frames": 1})
+    if rec and len(rec["frames"]) > 2:
+        await db.recordings.update_one({"id": rec["id"]}, {"$set": {"frames.2.depth.centre": 3.1, "model_label": "Synthetic 3D model"}})
+    result = {"route": rid, "memory": mem.id, "points": len(pts), "replaced": old, "chair_set": chair.modified_count, "recording_adjusted": bool(rec)}
     await db.migrations.insert_one({"id": marker, "created_at": now_iso(), "result": result})
     logger.info("%s: %s", marker, result)

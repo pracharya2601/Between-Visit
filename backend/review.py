@@ -166,11 +166,11 @@ async def build_path(doc: dict, version: dict, items: list, entities: Optional[l
         pos = {c["id"]: c.get("position") for c in await db.checkpoints.find({"id": {"$in": ids}}, {"_id": 0, "id": 1, "position": 1}).to_list(100)}
         scene = {
             "points": mem["point_count"], "points_sent": min(mem["point_count"], BROWSER_POINTS), "planes": meta.get("planes", []),
-            "trail": [p[:3] for p in teach], "metres_walked": mem["trail_m"],
+            "trail": [p[:3] for p in teach], "metres_walked": mem["trail_m"], "rgb": bool(mem.get("colors_path")), "model_label": mem.get("label"),
             "checkpoints": [{"id": c["id"], "order": c["order"], "name": c["name"], "position": pos.get(c["id"])} for c in version.get("checkpoints", [])],
         }
         t0 = (teach[0][0], teach[0][2]) if teach else (0.0, 0.0)
-        return {"mode": "3d", "aligned": aligned, "floor_y": y, "run_trail": [[x + ox, y, z + oz] for x, z in run_trail], "scene": scene, "entities": place(entities, *t0)}
+        return {"mode": "3d", "aligned": aligned, "floor_y": y, "run_trail": [[x + ox, y + 0.05, z + oz] for x, z in run_trail], "scene": scene, "entities": place(entities, *t0)}
     if run_trail:
         return {"mode": "2d", "source": "trail", "trail": [list(p) for p in run_trail], "entities": place(entities, *run_trail[0])}
     motion = doc.get("motion") or []
@@ -227,13 +227,24 @@ async def attempt_review(attempt_id: str):
     return {"header": header, "timeline": items, "path": await build_path(doc, version, items, entities)}
 
 
+async def memory_response(version: dict, colors: bool = False) -> Response:
+    """Browser-capped points (float32 xyz) or matching per-point RGB (uint8), same subsampling."""
+    mem = await db.route_memories.find_one({"id": version.get("memory_id")}, {"_id": 0}) if version.get("memory_id") else None
+    if not mem or (colors and not mem.get("colors_path")):
+        raise HTTPException(status_code=404, detail="No 3D memory for this route version")
+    arr = np.frombuffer(await get_object(mem["colors_path" if colors else "points_path"]), dtype="u1" if colors else "<f4").reshape(-1, 3)
+    if len(arr) > BROWSER_POINTS:
+        arr = arr[np.linspace(0, len(arr) - 1, BROWSER_POINTS).astype(np.int64)]
+    return Response(content=arr.tobytes(), media_type="application/octet-stream", headers={"X-Point-Count": str(len(arr))})
+
+
 @router.get("/attempts/{attempt_id}/review/points")
 async def attempt_review_points(attempt_id: str):
     _, _, _, version = await _attempt(attempt_id)
-    mem = await db.route_memories.find_one({"id": version.get("memory_id")}, {"_id": 0}) if version.get("memory_id") else None
-    if not mem:
-        raise HTTPException(status_code=404, detail="No 3D memory for this route version")
-    pts = np.frombuffer(await get_object(mem["points_path"]), dtype="<f4").reshape(-1, 3)
-    if len(pts) > BROWSER_POINTS:
-        pts = pts[np.linspace(0, len(pts) - 1, BROWSER_POINTS).astype(np.int64)]
-    return Response(content=pts.tobytes(), media_type="application/octet-stream", headers={"X-Point-Count": str(len(pts))})
+    return await memory_response(version)
+
+
+@router.get("/attempts/{attempt_id}/review/colors")
+async def attempt_review_colors(attempt_id: str):
+    _, _, _, version = await _attempt(attempt_id)
+    return await memory_response(version, colors=True)

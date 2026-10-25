@@ -24,6 +24,7 @@ export default function Path3D({ attemptId, api, path, dots, entities = [], sele
   const placed = entities.filter((e) => e.pos);
   const refs = useRef({});
   const label = `3D view of the taught route with this run's trail and ${dots.length} cue dots. The timeline gives the same information.`;
+  const colorsUrl = path.scene.rgb ? `${api}/attempts/${attemptId}/review/colors` : null;
   const overlay = (
     <div className="bv-dot-layer">
       {dots.map((d) => (
@@ -38,9 +39,12 @@ export default function Path3D({ attemptId, api, path, dots, entities = [], sele
     </div>
   );
   return (
-    <Scene3D scene={path.scene} pointsUrl={`${api}/attempts/${attemptId}/review/points`} label={label} interactive testId="review-scene" overlay={overlay}>
+    <>
+    {path.scene.model_label && <p className="bv-replay-label" data-testid="review-model-label">{path.scene.model_label}</p>}
+    <Scene3D scene={path.scene} pointsUrl={`${api}/attempts/${attemptId}/review/points`} colorsUrl={colorsUrl} label={label} interactive testId="review-scene" overlay={overlay}>
       {path.run_trail.length > 1 && <Line points={path.run_trail} color="#d6007a" lineWidth={5} />}
       <Projector dots={[...dots, ...placed.map((e) => ({ id: `known-${e.id}`, pos: e.pos }))]} y={path.floor_y} refs={refs} />
     </Scene3D>
+    </>
   );
 }

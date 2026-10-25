@@ -14,7 +14,7 @@ from exercises import create_attempt
 from ingest import state_for
 from machine import checkpoint_positions, machine_entity
 from models import AttemptEvent, now_iso
-from review import ROUTINE
+from review import ROUTINE, build_path, build_timeline, known_for_review, memory_response
 from sensors import SENSORS, sensors_for
 from storage import get_object
 
@@ -188,10 +188,20 @@ async def replay_state(attempt_id: str):
     pos = await checkpoint_positions(v) if v else {}
     ents = [machine_entity(ex.get("route_id"), v["version"], e) for e in v.get("known_entities") or [] if isinstance(e, dict)] if v else []
     frame = a.get("replay_frame", -1)
+    three = None
+    if v.get("memory_id"):
+        events = await db.attempt_events.find({"attempt_id": attempt_id}, {"_id": 0}).sort("seq", 1).to_list(5000)
+        items, _ = build_timeline(events, datetime.fromisoformat(a["started_at"]).timestamp(), trail, {})
+        path = await build_path(a, v, items, await known_for_review(v, {}, ex.get("route_id")))
+        if path["mode"] == "3d":
+            fr = rec["frames"][frame] if 0 <= frame < len(rec["frames"]) else {}
+            three = {"scene": path["scene"], "run_trail": path["run_trail"], "floor_y": path["floor_y"], "heading_deg": (fr.get("pose") or {}).get("heading_deg"),
+                     "dots": [{"id": i["id"], "category": i["category"], "pos": i["pos"], "text": i["text"], "reason": i["reason"]} for i in items if i["category"] in ("spoken", "suppressed") and i["pos"]],
+                     "entities": [{"id": e["id"], "label": e["label"], "pos": e["pos"]} for e in path["entities"] if e.get("pos")]}
     return {
-        "attempt_id": attempt_id, "status": a["status"], "public": a.get("public", False), "route_name": route.get("name"),
+        "attempt_id": attempt_id, "status": a["status"], "public": a.get("public", False), "route_name": route.get("name"), "three": three,
         "version": a["route_version"], "version_line": version_line(a["route_version"], route.get("current_version") or a["route_version"]),
-        "recording": {"kind": rec["kind"], "label": rec["label"], "frame_count": len(rec["frames"])},
+        "recording": {"kind": rec["kind"], "label": rec["label"], "frame_count": len(rec["frames"]), "model_label": (three or {}).get("scene", {}).get("model_label")},
         "frame_index": frame, "frame_url": f"/api/replays/{attempt_id}/frames/{frame}" if frame >= 0 else None,
         "caption": {"seq": spoken[-1]["seq"], "text": spoken[-1]["text"]} if spoken else None,
         "cues_spoken": len(spoken), "cues_held_back": sum(not c.get("spoken") and c.get("suppressed_reason") not in ROUTINE for c in cues),
@@ -201,6 +211,14 @@ async def replay_state(attempt_id: str):
         "entities": [{"label": e["entity"]["label"], "side": e["entity"]["side"], "position": e["entity"]["position"]} for e in ents],
         "review_path": f"/review/{attempt_id}" if a["status"] == "ended" else None,
     }
+
+
+@router.get("/replays/{attempt_id}/points")
+async def replay_points(attempt_id: str, colors: bool = False):
+    a = await replay_attempt(attempt_id)
+    ex = await db.exercises.find_one({"id": a["exercise_id"]}, {"_id": 0, "route_id": 1}) or {}
+    v = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": a["route_version"]}, {"_id": 0, "memory_id": 1}) or {}
+    return await memory_response(v, colors)
 
 
 @router.get("/replays/{attempt_id}/frames/{index}")

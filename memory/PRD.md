@@ -116,3 +116,9 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - Idempotent logged migration `phase14-demo-renames`: 3D demo route + checkpoints Entrance / Hallway turn / Reception desk across checkpoints, versions, events; 2D route "Lobby to elevator (synthetic)".
 - Device test removed from nav/workspace (URL kept); unique page titles; inline confirm dialogs trap/restore focus + Escape; skip link on note print; placeholder contrast.
 - axe-core: 0 serious/critical on 16 pages; regression scripts pass.
+
+## Phase 15 — 3D demo replay + synthetic corridor model (2026-10-25)
+- Replay screen uses shared Scene3D when the version has 3D memory: growing trail, now marker + heading arrow, cue dots (amber circle spoken / grey square held back), purple known-entity triangles, damped follow camera, Free look (orbit), reduced-motion fixed overview, sr-only summary; 2D fallback kept; fits 1920x1080.
+- Migration `phase15-synthetic-model`: 38,540-point coloured corridor (floor, walls, left handrail, tactile strip, desk, chair at (0.6,-5.0)) on v1+v2; optional per-point RGB (`colors_path`); v2 chair position set; recording frame 2 centre depth 3.1 m.
+- Review for replays: same 3D view with RGB + "Synthetic 3D model" label.
+- Known gap: headless fps 13.5 (software WebGL); real-GPU fps unmeasured.
