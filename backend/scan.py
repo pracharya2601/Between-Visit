@@ -338,7 +338,7 @@ async def process_scan(scan_id: str):
     finally:
         upload_path(s).unlink(missing_ok=True)
     np.savez(points_path(scan_id), pts=pts, nrm=nrm, cols=cols)
-    unit, up = guess_unit(pts), guess_up(nrm)
+    unit, up = guess_unit(pts), "+y" if s.ext == ".glb" else guess_up(nrm)
     s = await set_scan(scan_id, {"status": "ready", "unit": unit, "auto_unit": unit, "up": up, "auto_up": up, "colour_source": source,
                                  "point_count": len(pts), "seconds": round(time.time() - t0, 1)})
     return await view(s)
