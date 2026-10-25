@@ -23,8 +23,9 @@ function Dot({ item, x, y, selected, onSelect }) {
   );
 }
 
-export default function Path2D({ path, dots, selected, onSelect }) {
-  const all = [...path.trail, ...dots.map((d) => d.pos)];
+export default function Path2D({ path, dots, entities = [], selected, onSelect }) {
+  const placed = entities.filter((e) => e.pos);
+  const all = [...path.trail, ...dots.map((d) => d.pos), ...placed.map((e) => e.pos)];
   const { k, minX, minZ, h } = bounds(all);
   const sx = (x) => (x - minX) * k, sy = (z) => (z - minZ) * k;
   const source = path.source === "steps" ? "estimated from heading and steps (about 0.7 m per step)" : "from the phone's AR tracking";
@@ -33,6 +34,12 @@ export default function Path2D({ path, dots, selected, onSelect }) {
       <svg viewBox={`0 0 ${W} ${h}`} role="group" aria-label={`Top-down path ${source}, north up, with ${dots.length} cue dots`}>
         <polyline points={path.trail.map((p) => `${sx(p[0])},${sy(p[1])}`).join(" ")} className="bv-path-line" />
         {path.trail.length > 0 && <rect x={sx(path.trail[0][0]) - 8} y={sy(path.trail[0][1]) - 8} width={16} height={16} className="bv-path-start" transform={`rotate(45 ${sx(path.trail[0][0])} ${sy(path.trail[0][1])})`} />}
+        {placed.map((e) => (
+          <g key={e.id} role="img" aria-label={`Known object: ${e.label}, ${e.side}, from v${e.added_in}`} data-testid={`path-known-${e.id}`}>
+            <polygon points={`${sx(e.pos[0])},${sy(e.pos[1]) - 14} ${sx(e.pos[0]) - 12},${sy(e.pos[1]) + 9} ${sx(e.pos[0]) + 12},${sy(e.pos[1]) + 9}`} className="bv-known-svg" />
+            <text x={sx(e.pos[0]) + 16} y={sy(e.pos[1]) + 6} className="bv-known-text">{e.label}</text>
+          </g>
+        ))}
         {dots.map((d) => <Dot key={d.id} item={d} x={sx(d.pos[0])} y={sy(d.pos[1])} selected={selected === d.id} onSelect={onSelect} />)}
       </svg>
       <figcaption className="bv-hint">Top-down view, north up. Path {source}.</figcaption>

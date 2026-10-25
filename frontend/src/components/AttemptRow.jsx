@@ -44,7 +44,7 @@ export default function AttemptRow({ a }) {
   const p = `attempt-${a.stream_id}`;
   return (
     <li data-testid={p}>
-      <span className="bv-mono">{a.stream_id}</span> · <span data-testid={`${p}-status`}>{STATUS[a.status] ?? a.status}</span>
+      <span className="bv-mono">{a.stream_id}</span> · <span data-testid={`${p}-version`}>v{a.route_version}</span> · <span data-testid={`${p}-status`}>{STATUS[a.status] ?? a.status}</span>
       {a.last_help_at && (
         <p className="bv-help-alert" role="alert" data-testid={`${p}-help-alert`}>Help requested {hhmm(a.last_help_at)}</p>
       )}

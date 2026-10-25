@@ -88,3 +88,11 @@ Build Phase 1 (skeleton + data model) of "Between Visit": FastAPI + MongoDB + Re
 - GET /api/attempts/{id}/review (+ /review/points): header, timeline with plain-word reasons, 3D (aligned) or 2D (AR trail / dead reckoning) path.
 - /review/{id} page: header, filters, Details JSON, 3D (Scene3D + projected dot buttons) or SVG 2D path, dot<->timeline linking; "Review" link on each attempt.
 - Kept demo data: Client A, goal "Review demo (synthetic)": 3D attempt 48461db6-54af-4344-a634-30753164eb85, 2D attempt a59b1526-6c85-4c7b-992f-2854fd908502.
+
+## Phase 11 — Policy fixes + corrections & route memory versions (Oct 2026) DONE
+- Policy: "On route." no longer sets last_spoken / never rate-limits; skipped (nothing_to_say) <3 s after a real cue. Held-back checkpoint retried on the next result; held-back object retried only if seen again (same label+side, new distance, re-checked).
+- known_entity: label + (positions within 2 m start-relative, else same checkpoint segment); reason "Known: chair confirmed in v2".
+- attempts.route_version (latest version at creation; migrated from exercise pin); run/vision/policy/review use it; client page shows vN.
+- Corrections (backend/corrections.py): Confirm/Edit/Dismiss per object item, one per item (409), next version copied from latest with change note; Remove from memory; GET /api/routes/{id}/history. Builder saves carry known entities + 3D memory.
+- Review/route pages: version history, known-object markers (purple triangles) in 3D/2D, unpositioned listed.
+- Data: 3D demo route has v2 "chair confirmed" (no position: demo run had no depth) + 1 correction.

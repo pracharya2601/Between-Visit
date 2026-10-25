@@ -13,9 +13,10 @@ from ingest import TEST_STREAM_ID, hash_key, install_log_filter
 from ingest import router as ingest_router
 from workspace import router as workspace_router
 from exercises import router as exercises_router
-from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup
+from migrations import phase4_cleanup, phase4_model_updates, phase5_cleanup, phase6_cleanup, phase11_attempt_versions
 from cue_runner import resume_running_timers
 from review import router as review_router
+from corrections import router as corrections_router
 from run import router as run_router
 from teach import expire_idle_sessions
 from teach import router as teach_router
@@ -46,6 +47,10 @@ async def ensure_indexes():
     await db.test_config.create_index("stream_id", unique=True)
     await db.teach_sessions.create_index("stream_id", unique=True)
     await db.route_versions.create_index([("route_id", 1), ("version", 1)], unique=True)
+    idx = await db.corrections.index_information()
+    if "attempt_event_id_1" in idx and not idx["attempt_event_id_1"].get("unique"):
+        await db.corrections.drop_index("attempt_event_id_1")
+    await db.corrections.create_index("attempt_event_id", unique=True)
     await db.attempt_events.create_index([("attempt_id", 1), ("type", 1), ("seq", 1)])
 
 
@@ -93,6 +98,7 @@ async def lifespan(_: FastAPI):
     await seed_test_attempt()
     await reset_unsaved_route_versions()
     await phase4_model_updates()
+    await phase11_attempt_versions()
     await phase4_cleanup()
     await phase5_cleanup()
     await phase6_cleanup()
@@ -134,6 +140,7 @@ app.include_router(exercises_router)
 app.include_router(run_router)
 app.include_router(teach_router)
 app.include_router(review_router)
+app.include_router(corrections_router)
 if os.environ.get("CUE_TEST_HOOK") == "1":
     from test_hooks import router as test_hooks_router
     app.include_router(test_hooks_router)

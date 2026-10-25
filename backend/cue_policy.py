@@ -15,6 +15,8 @@ DUP_WINDOW_S = 20.0
 MIN_CONFIDENCE = 0.6
 BAND_M = {"near": 1.0, "mid": 2.5, "far": 5.0}
 BAND_TEXT = {"near": ", close.", "mid": ", a few steps.", "far": ", further ahead."}
+KNOWN_RADIUS_M = 2.0
+SIDE_ANGLE = {"ahead": 0.0, "left": -25.0, "right": 25.0}
 SIDES = {"ahead": ("ahead", "depth_centre"), "left": ("on your left", "depth_left"), "right": ("on your right", "depth_right")}
 
 
@@ -29,6 +31,7 @@ class PolicyState:
     last_spoken_at: Optional[float] = None
     last_on_route_at: Optional[float] = None
     cued: Dict[str, Tuple[Optional[Tuple[float, float]], float]] = field(default_factory=dict)
+    pending: Optional[tuple] = None
 
 
 @dataclass(frozen=True)
@@ -63,10 +66,10 @@ def _pause(state: PolicyState, rv, now: float, trigger: str):
     return Cue(PAUSE_TEXT, 0, True, None, route_version=rv, trigger=trigger), replace(state, pause_sent=True, last_spoken_at=now)
 
 
-def _speak(state: PolicyState, cue: Cue, now: float, on_spoken):
+def _speak(state: PolicyState, cue: Cue, now: float, on_spoken, pending: Optional[tuple] = None):
     if cue.priority != 0 and state.last_spoken_at is not None and now - state.last_spoken_at < RATE_LIMIT_S:
         details = {**(cue.details or {}), "seconds_since_last": round(now - state.last_spoken_at, 2)}
-        return replace(cue, text="", would_have_said=cue.text, spoken=False, suppressed_reason="rate_limited", details=details), state
+        return replace(cue, text="", would_have_said=cue.text, spoken=False, suppressed_reason="rate_limited", details=details), replace(state, pending=pending)
     return cue, on_spoken(replace(state, last_spoken_at=now))
 
 
@@ -108,13 +111,43 @@ def _entity_text(entity: dict, sensors: dict) -> str:
     return f"{_label(entity['label'])[1]} {words}{tail}"
 
 
-def _entity_reason(entity: dict, state: PolicyState, known: set, no_repeat: bool, pos, now: float) -> Tuple[Optional[str], dict]:
+def entity_position(pos, origin, heading, side: str, depth) -> Optional[list]:
+    """Start-relative [x, z] of an object: client pos minus run origin, plus depth along heading (left -25°, right +25°)."""
+    if pos is None or origin is None or heading is None or depth is None:
+        return None
+    a = math.radians(heading + SIDE_ANGLE[side])
+    return [round(pos[0] - origin[0] + math.sin(a) * depth, 2), round(pos[1] - origin[1] - math.cos(a) * depth, 2)]
+
+
+def _known_match(key: str, position, segment: dict, known: list) -> Optional[dict]:
+    for k in known:
+        if isinstance(k, str):
+            if k.strip().lower() == key:
+                return {}
+            continue
+        if (k.get("label") or "").strip().lower() != key:
+            continue
+        kp = k.get("position")
+        same = math.hypot(position[0] - kp[0], position[1] - kp[1]) <= KNOWN_RADIUS_M if position and kp else k.get("segment") == segment
+        if same:
+            return {"known_label": k.get("label"), "known_version": k.get("added_in")}
+    return None
+
+
+def _entity_info(entity: dict, state: PolicyState, sensors: dict, pos) -> dict:
+    origin = sensors.get("origin")
+    return {"confidence": entity["confidence"], "side": entity["relation"], "segment": {"from": state.next_index, "to": state.next_index + 1},
+            "position": entity_position(pos, origin, sensors.get("heading_deg"), entity["relation"], _distance(entity, sensors))}
+
+
+def _entity_reason(entity: dict, state: PolicyState, known: list, no_repeat: bool, pos, now: float, sensors: dict) -> Tuple[Optional[str], dict]:
     key = _label(entity["label"])[0]
-    details = {"confidence": entity["confidence"]}
+    details = _entity_info(entity, state, sensors, pos)
     if entity["confidence"] < MIN_CONFIDENCE:
         return "low_confidence", details
-    if key in known:
-        return "known_entity", details
+    hit = _known_match(key, details["position"], details["segment"], known)
+    if hit is not None:
+        return "known_entity", {**details, **hit}
     prev = state.cued.get(key) if no_repeat else None
     if prev:
         prev_pos, prev_t = prev
@@ -129,38 +162,48 @@ def _entity_reason(entity: dict, state: PolicyState, known: set, no_repeat: bool
     return None, details
 
 
-def _entities(state, entities, exercise, version, sensors, now, rv):
-    known = {(k.get("label", "") if isinstance(k, dict) else str(k)).strip().lower() for k in version.get("known_entities") or []}
+def _entities(state, entities, exercise, version, sensors, now, rv, pending=None):
+    known = version.get("known_entities") or []
     no_repeat = bool((exercise.get("silence_rules") or {}).get("no_repeat", True))
     pos = (sensors["pos_x"], sensors["pos_z"]) if sensors.get("pos_x") is not None and sensors.get("pos_z") is not None else None
     ranked = sorted(entities, key=lambda e: (_distance(e, sensors) or BAND_M[e["distance_band"]], -e["confidence"]))
-    reasons = [_entity_reason(e, state, known, no_repeat, pos, now) for e in ranked]
+    if pending and pending[0] == "entity":
+        ranked.sort(key=lambda e: (_label(e["label"])[0], e["relation"]) != pending[1:])
+    reasons = [_entity_reason(e, state, known, no_repeat, pos, now, sensors) for e in ranked]
     for e, (reason, details) in zip(ranked, reasons):
         if reason is None:
             key, label = _label(e["label"])
-            cue = Cue(_entity_text(e, sensors), 1, True, None, entity=label, route_version=rv, details={"confidence": e["confidence"]})
-            return _speak(state, cue, now, lambda s: replace(s, cued={**s.cued, key: (pos, now)}))
+            if pending and pending[0] == "entity" and (key, e["relation"]) == pending[1:]:
+                details = {**details, "retry": True}
+            cue = Cue(_entity_text(e, sensors), 1, True, None, entity=label, route_version=rv, details=details)
+            return _speak(state, cue, now, lambda s: replace(s, cued={**s.cued, key: (pos, now)}), pending=("entity", key, e["relation"]))
     e = ranked[0]
     return _silent(reasons[0][0], rv, _entity_text(e, sensors), 1, entity=_label(e["label"])[1], details=reasons[0][1]), state
 
 
 def _usable(state, result, exercise, version, sensors, now, rv):
-    state = replace(state, pause_sent=False, last_usable_at=now)
+    pending, state = state.pending, replace(state, pause_sent=False, last_usable_at=now, pending=None)
     cps = sorted(version.get("checkpoints") or [], key=lambda c: c["order"])
     match = result.get("checkpoint_match")
-    if match is not None and state.next_index < len(cps) and match == cps[state.next_index]["name"]:
-        n, cp = state.next_index + 1, cps[state.next_index]
+    idx = state.next_index
+    matched = match is not None and idx < len(cps) and match == cps[idx]["name"]
+    retry = not matched and pending is not None and pending[0] == "checkpoint" and pending[1] == idx and idx < len(cps)
+    if matched or retry:
+        n, cp = idx + 1, cps[idx]
         text = f"Checkpoint {n}: {cp['name']}."
         landmark = (cp.get("landmark_text") or "").strip()
         if exercise.get("cue_style") == "standard" and landmark:
             text = f"{text} {landmark}"
-        return _speak(state, Cue(text, 2, True, None, checkpoint=cp["name"], route_version=rv), now, lambda s: replace(s, next_index=n))
+        cue = Cue(text, 2, True, None, checkpoint=cp["name"], route_version=rv, details={"retry": True} if retry else None)
+        return _speak(state, cue, now, lambda s: replace(s, next_index=n), pending=("checkpoint", idx))
     if result.get("new_entities"):
-        return _entities(state, result["new_entities"], exercise, version, sensors, now, rv)
+        return _entities(state, result["new_entities"], exercise, version, sensors, now, rv, pending)
     if (exercise.get("silence_rules") or {}).get("stay_silent_on_route", True):
         return _silent("on_route_silent", rv), state
     if result.get("on_route") and (state.last_on_route_at is None or now - state.last_on_route_at >= ON_ROUTE_EVERY_S):
-        return _speak(state, Cue(ON_ROUTE_TEXT, 2, True, None, route_version=rv), now, lambda s: replace(s, last_on_route_at=now))
+        if state.last_spoken_at is not None and now - state.last_spoken_at < RATE_LIMIT_S:
+            return _silent("nothing_to_say", rv, details={"talking_over": True}), state
+        return Cue(ON_ROUTE_TEXT, 2, True, None, route_version=rv), replace(state, last_on_route_at=now)
     return _silent("nothing_to_say", rv), state
 
 

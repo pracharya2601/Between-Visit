@@ -20,7 +20,8 @@ function Projector({ dots, y, refs }) {
   return null;
 }
 
-export default function Path3D({ attemptId, api, path, dots, selected, onSelect }) {
+export default function Path3D({ attemptId, api, path, dots, entities = [], selected, onSelect }) {
+  const placed = entities.filter((e) => e.pos);
   const refs = useRef({});
   const label = `3D view of the taught route with this run's trail and ${dots.length} cue dots. The timeline gives the same information.`;
   const overlay = (
@@ -29,12 +30,17 @@ export default function Path3D({ attemptId, api, path, dots, selected, onSelect 
         <button key={d.id} ref={(el) => { refs.current[d.id] = el; }} type="button" aria-label={dotLabel(d)} aria-pressed={selected === d.id}
           onClick={() => onSelect(d.id, true)} className={`bv-dot bv-dot-abs bv-dot-${d.category}${selected === d.id ? " bv-dot-selected" : ""}`} data-testid={`path-dot-${d.id}`} />
       ))}
+      {placed.map((e) => (
+        <span key={e.id} ref={(el) => { refs.current[`known-${e.id}`] = el; }} className="bv-known-3d" role="img" aria-label={`Known object: ${e.label}, ${e.side}, from v${e.added_in}`} data-testid={`path-known-${e.id}`}>
+          <span className="bv-known-mark" aria-hidden="true" /> {e.label}
+        </span>
+      ))}
     </div>
   );
   return (
     <Scene3D scene={path.scene} pointsUrl={`${api}/attempts/${attemptId}/review/points`} label={label} interactive testId="review-scene" overlay={overlay}>
       {path.run_trail.length > 1 && <Line points={path.run_trail} color="#d6007a" lineWidth={5} />}
-      <Projector dots={dots} y={path.floor_y} refs={refs} />
+      <Projector dots={[...dots, ...placed.map((e) => ({ id: `known-${e.id}`, pos: e.pos }))]} y={path.floor_y} refs={refs} />
     </Scene3D>
   );
 }

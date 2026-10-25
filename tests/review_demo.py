@@ -217,4 +217,5 @@ async def cleanup_tmp():
     Path("/app/tests/.review_tmp.json").unlink()
 
 
-asyncio.run({"build": build, "check": check, "cleanup-tmp": cleanup_tmp}[sys.argv[1]]())
+if __name__ == "__main__":
+    asyncio.run({"build": build, "check": check, "cleanup-tmp": cleanup_tmp}[sys.argv[1]]())

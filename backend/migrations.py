@@ -65,6 +65,13 @@ async def phase6_cleanup():
     logger.info("phase6-cleanup: %s", result)
 
 
+async def phase11_attempt_versions():
+    """Copies each exercise's pinned version onto its attempts that don't have their own yet."""
+    for a in await db.attempts.find({"route_version": {"$exists": False}}, {"_id": 0, "id": 1, "exercise_id": 1}).to_list(10000):
+        ex = await db.exercises.find_one({"id": a["exercise_id"]}, {"_id": 0, "route_version": 1}) or {}
+        await db.attempts.update_one({"id": a["id"]}, {"$set": {"route_version": ex.get("route_version", 0)}})
+
+
 async def phase4_model_updates():
     await db.routes.update_many({"name": TEST_ROUTE, "is_test": {"$ne": True}}, {"$set": {"is_test": True}})
     await db.exercises.update_many(

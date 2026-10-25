@@ -114,7 +114,7 @@ def build_prompt(version: dict, last_match: Optional[str], depth_text: str) -> s
     cp_lines = "\n".join(f"{c['order']}. {c['name']}: {c['landmark_text']}" for c in cps) or "(none)"
     known = version.get("known_entities") or []
     known_lines = "\n".join(
-        f"- {e.get('label')} ({e.get('relation')}, verified: {'yes' if e.get('verified') else 'no'})" if isinstance(e, dict) else f"- {e}"
+        f"- {e.get('label')} (on the {e.get('side')}, between checkpoints {(e.get('segment') or {}).get('from')} and {(e.get('segment') or {}).get('to')}, verified by {e.get('verified_by')})" if isinstance(e, dict) else f"- {e}"
         for e in known
     ) or "(none)"
     return (
@@ -196,7 +196,7 @@ async def analyse(attempt_id: str, frame: bytes, source: str, timeout: float = T
             await log_and_cue(attempt_id, "vision_stopped", reason="time_limit")
         return
     ex = await db.exercises.find_one({"id": attempt.exercise_id}, {"_id": 0}) or {}
-    version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": ex.get("route_version")}, {"_id": 0}) or {}
+    version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": attempt.route_version}, {"_id": 0}) or {}
     names = [c["name"] for c in version.get("checkpoints", [])]
     last = await db.attempt_events.find_one({"attempt_id": attempt_id, "type": "vision", "checkpoint": {"$ne": None}}, {"_id": 0, "checkpoint": 1}, sort=[("seq", -1)])
     model = os.environ["VISION_MODEL"]

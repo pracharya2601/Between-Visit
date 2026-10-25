@@ -82,9 +82,10 @@ class RouteVersion(BaseDocument):
     route_id: str
     version: int
     checkpoints: List[CheckpointSnapshot] = Field(default_factory=list)
-    known_entities: List[str] = Field(default_factory=list)
+    known_entities: list = Field(default_factory=list)
     author: str
     memory_id: Optional[str] = None
+    note: str = ""
 
 
 class TeachSession(BaseDocument):
@@ -146,6 +147,7 @@ class AttemptPublic(BaseDocument):
     ended_at: Optional[str] = None
     active_seconds: float = 0
     running_since: Optional[str] = None
+    route_version: Optional[int] = None
 
 
 class Attempt(AttemptPublic):
@@ -201,6 +203,9 @@ class Correction(BaseDocument):
     action: Literal["confirm", "edit", "dismiss"]
     author: str
     new_route_version: Optional[int] = None
+    attempt_id: Optional[str] = None
+    before: Optional[dict] = None
+    after: Optional[dict] = None
 
 
 COLLECTIONS = {
@@ -233,5 +238,5 @@ FOREIGN_KEYS = {
     "teach_sessions": ["route_id"],
     "route_memories": ["route_id"],
     "attempt_events": ["attempt_id"],
-    "corrections": ["attempt_event_id"],
+    "corrections": [],
 }

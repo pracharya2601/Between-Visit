@@ -19,6 +19,10 @@ VER = {"version": 3, "known_entities": ["bench", "Plant pot"], "checkpoints": [
 ]}
 
 
+VER2 = {**VER, "version": 2, "known_entities": [{"label": "chair", "side": "ahead", "segment": {"from": 0, "to": 1}, "position": [0.0, -3.0], "added_in": 2}]}
+POSE = {"pos_x": 2.0, "pos_z": -1.0, "origin": (2.0, -1.0), "heading_deg": 0.0}
+
+
 def ex(style="minimal", silent=True, no_repeat=True):
     return {"cue_style": style, "silence_rules": {"stay_silent_on_route": silent, "no_repeat": no_repeat}}
 
@@ -35,12 +39,13 @@ NOFRAME = "none"
 ERR, TICK, STOP, RUN = {"type": "vision_error"}, {"type": "tick"}, {"type": "vision_stopped"}, {"type": "running"}
 
 
-def replay(steps, exercise):
+def replay(steps, exercise, version=None):
+    version = version or VER
     """steps: (t, event, sensors-or-None, frame_t-or-None). Frames are assumed to arrive at t unless frame_t is given."""
     state, out = PolicyState(), []
     for t, event, sensors, frame_t in [(0.0, RUN, None, None)] + steps:
         s = {**(sensors or {}), "last_frame_at": None if frame_t == NOFRAME else T0 + (t if frame_t is None else frame_t)}
-        cue, state = decide(state, event, exercise, VER, s, T0 + t)
+        cue, state = decide(state, event, exercise, version, s, T0 + t)
         if cue is not None:
             out.append((t, cue.text or cue.would_have_said or "", cue.priority, cue.spoken, cue.suppressed_reason))
     return out
@@ -100,15 +105,33 @@ CASES = {
                                    [(1, "", None, False, "on_route_silent"), (20, P, 0, True, None)]),
     "Q-49 phone camera starts at 3 s, first results 4.5 s": (ex(), [(1, TICK, None, NOFRAME), (2, TICK, None, NOFRAME)] + [x for t in range(3, 15) for x in ((t, TICK, None, t), (t + 0.5, vis() if t >= 4 else ERR, None, t))],
                                                              [(3.5, "", None, False, "vision_error")] + [(t + 0.5, "", None, False, "on_route_silent") for t in range(4, 15)]),
+    "JRN-149 On route then object 1 s later": (ex(silent=False), [(1, vis(), None, None), (2, vis(ents=[ent("chair")]), None, None)],
+                                                [(1, "On route.", 2, True, None), (2, "Chair ahead, close.", 1, True, None)]),
+    "REQ-354 On route skipped right after a real cue": (ex(silent=False), [(1, vis(ents=[ent("chair")]), None, None), (2, vis(), None, None), (5, vis(), None, None)],
+                                                         [(1, "Chair ahead, close.", 1, True, None), (2, "", None, False, "nothing_to_say"), (5, "On route.", 2, True, None)]),
+    "JRN-150 held-back checkpoint retried without a re-match": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis("Entrance doors"), None, None), (4.5, vis(), None, None)],
+                                                                [(1, "Chair ahead, close.", 1, True, None), (2, "Checkpoint 1: Entrance doors.", 2, False, "rate_limited"), (4.5, "Checkpoint 1: Entrance doors.", 2, True, None)]),
+    "JRN-151 held-back object, next result without it": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis(ents=[ent("cart", "left")]), {"depth_left": 3.0}, None), (4.5, vis(), None, None)],
+                                                          [(1, "Chair ahead, close.", 1, True, None), (2, "Cart on your left, about 3 metres.", 1, False, "rate_limited"), (4.5, "", None, False, "on_route_silent")]),
+    "JRN-151 held-back object retried with new distance": (ex(), [(1, vis(ents=[ent("chair")]), None, None), (2, vis(ents=[ent("cart", "left")]), {"depth_left": 3.0}, None), (4.5, vis(ents=[ent("cart", "left")]), {"depth_left": 1.4}, None)],
+                                                            [(1, "Chair ahead, close.", 1, True, None), (2, "Cart on your left, about 3 metres.", 1, False, "rate_limited"), (4.5, "Cart on your left, about 1.5 metres.", 1, True, None)]),
+    "REQ-382 known chair within 2 m": (ex(), [(1, vis(ents=[ent("Chair")]), {**POSE, "pos_z": -2.5, "depth_centre": 1.4}, None)],
+                                       [(1, "Chair ahead, about 1.5 metres.", 1, False, "known_entity")], VER2),
+    "JRN-156/Q-52 chair 5 m away in another segment": (ex(), [(1, vis("Entrance doors"), POSE, None), (5, vis(ents=[ent("chair")]), {**POSE, "pos_z": -8.0, "depth_centre": 1.0}, None)],
+                                                       [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Chair ahead, about 1 metre.", 1, True, None)], VER2),
+    "REQ-383 no depth, same segment -> known": (ex(), [(1, vis(ents=[ent("chair")]), POSE, None)],
+                                                [(1, "Chair ahead, close.", 1, False, "known_entity")], VER2),
+    "REQ-383 no depth, other segment -> spoken": (ex(), [(1, vis("Entrance doors"), POSE, None), (5, vis(ents=[ent("chair")]), POSE, None)],
+                                                  [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Chair ahead, close.", 1, True, None)], VER2),
     "extra: vision stopped at 30 min": (ex(), [(1, vis(), None, None), (2, STOP, None, None)],
                                         [(1, "", None, False, "on_route_silent"), (2, P, 0, True, None)]),
 }
 
 
 def run_replays():
-    runs = [{name: replay(steps, exercise) for name, (exercise, steps, _) in CASES.items()} for _ in range(3)]
+    runs = [{name: replay(c[1], c[0], *c[3:]) for name, c in CASES.items()} for _ in range(3)]
     fails = 0
-    for name, (_, _, expected) in CASES.items():
+    for name, (_, _, expected, *_v) in CASES.items():
         got = runs[0][name]
         ok = [tuple(map(lambda v: float(v) if isinstance(v, int) and not isinstance(v, bool) else v, g)) for g in got] == \
              [tuple(map(lambda v: float(v) if isinstance(v, int) and not isinstance(v, bool) else v, e)) for e in expected]

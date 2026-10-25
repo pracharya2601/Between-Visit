@@ -192,6 +192,20 @@ textarea.bv-input { resize: vertical; }
 .bv-legend-taught { background: #003a70; border: 1px solid #fff; outline: 1px solid #0b0b0b; }
 .bv-legend-start { display: inline-block; width: 0.8rem; height: 0.8rem; background: #0b0b0b; transform: rotate(45deg); }
 
+.bv-correct { margin-top: 0.75rem; }
+.bv-correct-form { display: grid; gap: 0.4rem; max-width: 24rem; margin-top: 0.5rem; }
+.bv-history { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+.bv-history li, .bv-known li { margin-bottom: 0.4rem; }
+.bv-known { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+.bv-known .bv-btn { margin-left: 0.75rem; }
+.bv-h3 { font-size: 1.1rem; font-weight: 800; margin: 1rem 0 0.25rem; }
+.bv-btn-small { min-height: 2.5rem; padding: 0.3rem 0.8rem; font-size: 0.95rem; }
+.bv-known-mark { display: inline-block; width: 0; height: 0; border-left: 0.7rem solid transparent; border-right: 0.7rem solid transparent; border-bottom: 1.2rem solid #6a1b9a; filter: drop-shadow(0 0 1px #fff); vertical-align: middle; }
+.bv-known-mark.bv-legend-swatch { width: 0; height: 0; }
+.bv-known-3d { position: absolute; top: 0; left: 0; pointer-events: none; background: #fff; color: #0b0b0b; border: 2px solid #6a1b9a; padding: 0.1rem 0.4rem; font-weight: 800; font-size: 0.9rem; white-space: nowrap; }
+.bv-known-svg { fill: #6a1b9a; stroke: #fff; stroke-width: 2; }
+.bv-known-text { font-weight: 800; font-size: 18px; fill: #4a0f6e; paint-order: stroke; stroke: #fff; stroke-width: 4px; }
+
 .bv-footer { border-top: 3px solid var(--bv-line); padding: 1.5rem 0; background: var(--bv-panel); }
 .bv-footer p { margin: 0; font-size: 1rem; }
 

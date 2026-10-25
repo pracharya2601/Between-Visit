@@ -110,7 +110,7 @@ Key = Annotated[Optional[str], Header(alias="X-Stream-Key")]
 async def run_info(attempt_id: str, x_stream_key: Key = None):
     a = await keyed_attempt(attempt_id, x_stream_key)
     ex = await db.exercises.find_one({"id": a.exercise_id}, {"_id": 0}) or {}
-    version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": ex.get("route_version")}, {"_id": 0})
+    version = await db.route_versions.find_one({"route_id": ex.get("route_id"), "version": a.route_version}, {"_id": 0})
     names = [c["name"] for c in sorted((version or {}).get("checkpoints", []), key=lambda c: c["order"])]
     last = await last_guide(a.id)
     return RunInfo(

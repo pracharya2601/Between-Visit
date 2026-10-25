@@ -55,7 +55,10 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 | F-44 | Relevance policy: deterministic backend rules turn each vision event into one "cue" event (spoken or suppressed with a reason); spoken cues go through the existing cue path | client | 9 |
 | F-45 | Fix: no "no frames" pause until the first frame or 15 s after Start | client | 10 |
 | F-46 | Attempt review page: header stats, filterable timeline with plain-word reasons, 3D/2D path with linked cue dots, two demo attempts | practitioner | 10 |
-| F-8 | Corrections UI: later | practitioner | later |
+| F-47 | Fixes: "On route." never counts/blocks; held-back cues retried; vision-failure wording | client | 11 |
+| F-48 | Corrections on review items: Confirm / Edit / Dismiss → corrections log; Confirm → next route version with a known entity | practitioner | 11 |
+| F-49 | Version history (route + review pages), "Remove from memory" → next version; attempts carry their own version (new = latest) | practitioner | 11 |
+| F-50 | Confirmed entities as labelled markers in 3D/2D; policy known_entity by label + 2 m or segment | system | 11 |
 
 ## Phases
 - Phase 1: Skeleton + data model + seed + read endpoints + home page → F-1..F-7. [requirement](phase1/requirement.md) · [journeys](phase1/journeys.md)
@@ -68,6 +71,7 @@ Orientation-and-mobility (O&M) practices assign, monitor and review between-sess
 - Phase 8: Teach a route by walking → F-39..F-43. [requirement](phase8/requirement.md) · [journeys](phase8/journeys.md)
 - Phase 9: Relevance policy (spoken cues, no new UI) → F-44. [requirement](phase9/requirement.md) · [journeys](phase9/journeys.md)
 - Phase 10: Start-grace fix + attempt review → F-45..F-46. [requirement](phase10/requirement.md) · [journeys](phase10/journeys.md)
+- Phase 11: Fixes + corrections and route memory versions → F-47..F-50. [requirement](phase11/requirement.md) · [journeys](phase11/journeys.md)
 - Next: the deferred checkpoint-2 match check after the first real teach walk.
 - Later phases: to be defined with the user.
 

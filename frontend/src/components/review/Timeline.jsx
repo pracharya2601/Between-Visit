@@ -3,7 +3,7 @@ import TimelineItem from "@/components/review/TimelineItem";
 
 const FILTERS = [["all", "All"], ["spoken", "Spoken"], ["suppressed", "Suppressed"]];
 
-export default function Timeline({ items, routine, filter, setFilter, selected, scrollToken, onSelect }) {
+export default function Timeline({ items, routine, filter, setFilter, selected, scrollToken, onSelect, onChanged }) {
   const shown = filter === "all" ? items : items.filter((i) => i.category === filter);
   useEffect(() => {
     if (!scrollToken || !selected) return;
@@ -22,7 +22,7 @@ export default function Timeline({ items, routine, filter, setFilter, selected, 
       <p className="bv-tl-note" data-testid="timeline-routine-hidden">{routine} routine silences hidden</p>
       <p className="bv-tl-note" role="status" aria-live="polite" data-testid="timeline-count">{shown.length} items shown</p>
       <ol className="bv-tl" data-testid="timeline-list">
-        {shown.map((i) => <TimelineItem key={i.id} item={i} selected={selected === i.id} onSelect={onSelect} />)}
+        {shown.map((i) => <TimelineItem key={i.id} item={i} selected={selected === i.id} onSelect={onSelect} onChanged={onChanged} />)}
       </ol>
     </section>
   );

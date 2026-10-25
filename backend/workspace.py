@@ -213,17 +213,20 @@ async def save_route(route_id: str):
         raise HTTPException(status_code=422, detail="Add at least one checkpoint")
     if not all(c.approved for c in cps):
         raise HTTPException(status_code=422, detail="Approve every checkpoint")
-    prev = await db.route_versions.find_one({"route_id": route_id}, {"_id": 0, "memory_id": 1}, sort=[("version", -1)])
-    return await create_version(route, cps, (prev or {}).get("memory_id"))
+    prev = await db.route_versions.find_one({"route_id": route_id}, {"_id": 0, "memory_id": 1, "known_entities": 1}, sort=[("version", -1)])
+    prev = prev or {}
+    return await create_version(route, cps, prev.get("memory_id"), prev.get("known_entities") or [])
 
 
-async def create_version(route: Route, cps: List[Checkpoint], memory_id: Optional[str]) -> RouteVersion:
+async def create_version(route: Route, cps: List[Checkpoint], memory_id: Optional[str], known_entities: Optional[list] = None) -> RouteVersion:
     version = RouteVersion(
         route_id=route.id,
         version=route.current_version + 1,
         checkpoints=[CheckpointSnapshot(id=c.id, order=c.order, name=c.name, photo_url=c.photo_url, landmark_text=c.landmark_text) for c in cps],
         author=AUTHOR,
         memory_id=memory_id,
+        known_entities=known_entities or [],
+        note="route saved" if route.current_version == 0 else "checkpoints edited",
     )
     await db.route_versions.insert_one(version.to_mongo())
     await db.routes.update_one({"id": route.id}, {"$set": {"current_version": version.version}})

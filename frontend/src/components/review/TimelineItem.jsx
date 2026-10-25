@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { mss } from "@/lib/format";
+import CorrectionControls from "@/components/review/CorrectionControls";
 
-export default function TimelineItem({ item, selected, onSelect }) {
+export default function TimelineItem({ item, selected, onSelect, onChanged }) {
   const [open, setOpen] = useState(false);
   const p = `timeline-item-${item.id}`;
   return (
@@ -10,8 +11,9 @@ export default function TimelineItem({ item, selected, onSelect }) {
         <span className="bv-tl-time" data-testid={`${p}-time`}>{mss(item.at)}</span>
         <span className="bv-tl-kind">{item.label}</span>
       </p>
-      <p className="bv-tl-text" data-testid={`${p}-text`}>{item.category === "suppressed" ? `Would have said: ${item.text}` : item.text}</p>
+      <p className="bv-tl-text" data-testid={`${p}-text`}>{item.would_have_said ? `Would have said: ${item.text}` : item.text}</p>
       {item.reason && <p className="bv-tl-reason" data-testid={`${p}-reason`}>Reason: {item.reason}</p>}
+      {item.entity && <CorrectionControls item={item} onChanged={onChanged} />}
       {(item.pos || item.raw) && (
         <div className="bv-btn-row">
           {item.pos && (
