@@ -1,6 +1,7 @@
 """Demo replays: feed a recording's frames at their original timing through the normal vision → cue_policy → cue pipeline."""
 import asyncio
 import logging
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
@@ -16,6 +17,7 @@ from machine import checkpoint_positions, machine_entity
 from models import AttemptEvent, now_iso
 from review import ROUTINE, build_path, build_timeline, known_for_review, load_memory, memory_response
 from corrections import is_scan
+from cue_policy import alignment, to_route
 
 LANDING_POINTS = 15_000
 from sensors import SENSORS, sensors_for
@@ -28,6 +30,8 @@ MAX_PUBLIC = 3
 TTL = timedelta(hours=24)
 BUSY = "Demo busy, try again in a minute."
 NO_RECORDING = "No demo recording yet."
+DEMO_SETTING = "website_demo_route"
+NOT_READY = "This route needs a ready real recording, a saved 3D model and checkpoints to be the website demo."
 CREATE_LOCK = asyncio.Lock()
 TASKS: set = set()
 
@@ -35,6 +39,10 @@ TASKS: set = set()
 class ReplayIn(BaseModel):
     on: Literal["v1", "latest"] = "latest"
     recording_id: Optional[str] = None
+
+
+class DemoSettingIn(BaseModel):
+    route_id: Optional[str] = None
 
 
 def rec_out(r: dict) -> dict:
@@ -47,11 +55,44 @@ async def recordings_for(route_id: str) -> list:
     return real + [r for r in docs if r["kind"] == "synthetic"]
 
 
-async def demo_route() -> dict:
+async def synthetic_route() -> dict:
     route = await db.routes.find_one({"name": DEMO_ROUTE, "is_test": {"$ne": True}}, {"_id": 0})
     if not route:
         raise HTTPException(status_code=404, detail=NO_RECORDING)
     return route
+
+
+def demo_poses(frames: list, scan: bool) -> list:
+    """Recording poses moved into the route frame by the shared alignment; [] when it can't be aligned."""
+    raw = [f for f in frames if (f.get("pose") or {}).get("x") is not None and f["pose"].get("z") is not None]
+    al = alignment([(f["pose"]["x"], f["pose"]["z"]) for f in raw], scan)
+    if al is None:
+        return []
+    turn = math.degrees(math.atan2(al[3], al[2]))
+    return [[*(round(v, 3) for v in to_route(al, f["pose"]["x"], f["pose"]["z"])), round(((f["pose"].get("heading_deg") or 0) + turn) % 360, 1), f["t_offset_ms"]] for f in raw]
+
+
+async def real_demo(route_id: Optional[str]) -> Optional[tuple]:
+    """(route, latest version, latest real recording, poses) when the chosen route has everything the website demo needs; None → synthetic demo."""
+    route = await db.routes.find_one({"id": route_id, "is_test": {"$ne": True}}, {"_id": 0}) if route_id else None
+    if not route or route["name"] == DEMO_ROUTE:
+        return None
+    v = await db.route_versions.find_one({"route_id": route["id"], "version": route.get("current_version")}, {"_id": 0}) or {}
+    if not v.get("checkpoints") or not v.get("memory_id") or not await db.route_memories.find_one({"id": v["memory_id"]}, {"_id": 0, "id": 1}):
+        return None
+    rec = await db.recordings.find_one({"route_id": route["id"], "kind": "real", "ready": True}, {"_id": 0}, sort=[("created_at", -1)])
+    poses = demo_poses(rec.get("frames") or [], await is_scan(v)) if rec else []
+    return (route, v, rec, poses) if len(poses) >= 2 else None
+
+
+async def chosen_demo() -> Optional[tuple]:
+    s = await db.settings.find_one({"key": DEMO_SETTING}, {"_id": 0}) or {}
+    return await real_demo(s.get("route_id"))
+
+
+async def demo_route() -> dict:
+    real = await chosen_demo()
+    return real[0] if real else await synthetic_route()
 
 
 def version_line(n: int, latest: int) -> str:
@@ -225,10 +266,56 @@ async def replay_state(attempt_id: str):
     }
 
 
+async def real_scene(route: dict, v: dict, poses: list) -> Optional[dict]:
+    loaded = await load_memory(v["memory_id"])
+    if not loaded:
+        return None
+    mem, meta = loaded
+    pos = await checkpoint_positions(v)
+    chair = next((e for e in v.get("known_entities") or [] if isinstance(e, dict) and e.get("label") == "chair" and e.get("position")), None)
+    ex_ids = [e["id"] for e in await db.exercises.find({"route_id": route["id"]}, {"_id": 0, "id": 1}).to_list(100)]
+    att = await db.attempts.find_one({"exercise_id": {"$in": ex_ids}, "replay": {"$ne": True}, "status": "ended"}, {"_id": 0, "id": 1}, sort=[("created_at", -1)])
+    return {
+        "scene": {"points": mem["point_count"], "points_sent": min(mem["point_count"], LANDING_POINTS), "planes": meta.get("planes", []),
+                  "trail": [p[:3] for p in meta.get("trail") or []] or [[p[0], 0.0, p[1]] for p in poses],
+                  "metres_walked": mem.get("trail_m") or 0.0, "rgb": bool(mem.get("colors_path")),
+                  "checkpoints": [{"id": c["id"], "order": c["order"], "name": c["name"], "position": [pos[c["id"]]["x"], 0.0, pos[c["id"]]["z"]] if pos.get(c["id"]) else None} for c in v.get("checkpoints", [])]},
+        "poses": poses,
+        "chair": {"label": "chair", "pos": chair["position"]} if chair else None,
+        "review_attempt_id": att and att["id"],
+    }
+
+
+@router.get("/demo/setting")
+async def demo_setting():
+    s = await db.settings.find_one({"key": DEMO_SETTING}, {"_id": 0}) or {}
+    real = await real_demo(s.get("route_id"))
+    syn = await db.routes.find_one({"name": DEMO_ROUTE, "is_test": {"$ne": True}}, {"_id": 0, "id": 1}) or {}
+    return {"route_id": s.get("route_id"), "synthetic_route_id": syn.get("id"), "active_route_id": real[0]["id"] if real else syn.get("id"), "using_synthetic": real is None}
+
+
+@router.put("/demo/setting")
+async def set_demo_setting(body: DemoSettingIn):
+    if body.route_id:
+        route = await db.routes.find_one({"id": body.route_id, "is_test": {"$ne": True}}, {"_id": 0, "id": 1, "name": 1})
+        if not route:
+            raise HTTPException(status_code=404, detail="Route not found")
+        if route["name"] != DEMO_ROUTE and not await real_demo(route["id"]):
+            raise HTTPException(status_code=409, detail=NOT_READY)
+        await db.settings.update_one({"key": DEMO_SETTING}, {"$set": {"key": DEMO_SETTING, "route_id": route["id"], "updated_at": now_iso()}}, upsert=True)
+    else:
+        await db.settings.delete_one({"key": DEMO_SETTING})
+    return await demo_setting()
+
+
 @router.get("/demo/scene")
 async def demo_scene():
     """Public, read-only data for the landing loop: stored model, synthetic trail, v2 chair, review rows source. No attempts, no AI."""
-    route = await demo_route()
+    real = await chosen_demo()
+    out = await real_scene(real[0], real[1], real[3]) if real else None
+    if out:
+        return out
+    route = await synthetic_route()
     v2 = await db.route_versions.find_one({"route_id": route["id"], "version": route["current_version"]}, {"_id": 0}) or {}
     loaded = await load_memory(v2["memory_id"]) if v2.get("memory_id") else None
     rec = await db.recordings.find_one({"route_id": route["id"], "kind": "synthetic", "ready": True}, {"_id": 0, "frames": 1})
@@ -251,7 +338,8 @@ async def demo_scene():
 
 @router.get("/demo/points")
 async def demo_points(colors: bool = False):
-    route = await demo_route()
+    real = await chosen_demo()
+    route = real[0] if real and await load_memory(real[1]["memory_id"]) else await synthetic_route()
     v2 = await db.route_versions.find_one({"route_id": route["id"], "version": route["current_version"]}, {"_id": 0, "memory_id": 1}) or {}
     return await memory_response(v2, colors, cap=LANDING_POINTS)
 

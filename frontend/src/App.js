@@ -18,6 +18,7 @@ import NotePrint from "@/pages/NotePrint";
 import ReplayScreen from "@/pages/ReplayScreen";
 import Landing from "@/pages/Landing";
 import Research from "@/pages/Research";
+import DemoRouteSetting from "@/components/replay/DemoRouteSetting";
 import { useParams } from "react-router-dom";
 
 function ReplayWatch() {
@@ -27,7 +28,12 @@ function ReplayWatch() {
 
 function RouteReplay() {
   const { id } = useParams();
-  return <ReplayScreen routeId={id} />;
+  return (
+    <>
+      <ReplayScreen routeId={id} />
+      <DemoRouteSetting routeId={id} />
+    </>
+  );
 }
 
 function Workspace() {

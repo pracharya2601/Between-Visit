@@ -307,7 +307,13 @@ def decide(state: PolicyState, event: dict, exercise: dict, version: dict, senso
         state = replace(state, first_frame_at=state.last_frame_at)
     kind = event["type"]
     if kind == "running":
-        return None, replace(state, armed_at=now, first_frame_at=None)
+        first = state.armed_at is None
+        state = replace(state, armed_at=now, first_frame_at=None)
+        cps = sorted(version.get("checkpoints") or [], key=lambda c: c["order"])
+        if first and sensors.get("scan") and state.next_index == 0 and cps:
+            start = {"by": "position", "distance_m": 0.0, "at_start": True}
+            return _checkpoint(state, 0, cps, exercise, rv, now, start, start)
+        return None, state
     if kind == "tick":
         return _tick(state, rv, now)
     if kind == "vision_stopped":

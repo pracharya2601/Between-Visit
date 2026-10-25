@@ -22,6 +22,7 @@ VER = {"version": 3, "known_entities": ["bench", "Plant pot"], "checkpoints": [
 VER2 = {**VER, "version": 2, "known_entities": [{"label": "chair", "side": "ahead", "segment": {"from": 0, "to": 1}, "position": [0.0, -3.0], "added_in": 2}]}
 POSE = {"pos_x": 2.0, "pos_z": -1.0, "origin": (2.0, -1.0), "heading_deg": 0.0}
 POSE_CP = {**POSE, "cp_positions": {0: (0.0, 0.0), 1: (0.0, -4.0), 2: (5.0, -4.0)}}
+SCAN_CP = {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0)}
 
 
 def ex(style="minimal", silent=True, no_repeat=True):
@@ -40,11 +41,11 @@ NOFRAME = "none"
 ERR, TICK, STOP, RUN = {"type": "vision_error"}, {"type": "tick"}, {"type": "vision_stopped"}, {"type": "running"}
 
 
-def replay(steps, exercise, version=None):
+def replay(steps, exercise, version=None, start=None):
     version = version or VER
     """steps: (t, event, sensors-or-None, frame_t-or-None). Frames are assumed to arrive at t unless frame_t is given."""
     state, out = PolicyState(), []
-    for t, event, sensors, frame_t in [(0.0, RUN, None, None)] + steps:
+    for t, event, sensors, frame_t in [(0.0, RUN, start, None)] + steps:
         s = {**(sensors or {}), "last_frame_at": None if frame_t == NOFRAME else T0 + (t if frame_t is None else frame_t)}
         cue, state = decide(state, event, exercise, version, s, T0 + t)
         if cue is not None:
@@ -127,6 +128,10 @@ CASES = {
                                                                     [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position", "distance_m": 1.3})]),
     "SCAN radius 1.5: scan route at 1.6 m -> not reached": (ex(), [(1, vis("Entrance doors"), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0)}, None), (5, vis(), {**POSE_CP, "scan": True, "align": (2.0, -1.0, 1.0, 0.0), "pos_z": -6.6}, None)],
                                                             [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
+    "P22 scan start reaches checkpoint 1, then checkpoint 2 at 1.3 m by position; resume does not repeat": (ex(), [(5, vis(), {**SCAN_CP, "pos_z": -6.3}, None), (8, RUN, SCAN_CP, None)],
+                                                                                [(0, "Checkpoint 1: Entrance doors.", 2, True, None, {"by": "position", "distance_m": 0.0}), (5, "Checkpoint 2: Handrail end.", 2, True, None, {"by": "position", "distance_m": 1.3})], VER, SCAN_CP),
+    "P22 teach route start does not auto-reach checkpoint 1": (ex(), [(5, vis(), {**POSE_CP, "pos_z": -3.5}, None)],
+                                                              [(5, "", None, False, "on_route_silent")], VER, POSE_CP),
     "SCAN radius 1.5: teach route at 1.3 m -> not reached (1.0 m applies)": (ex(), [(1, vis("Entrance doors"), POSE_CP, None), (5, vis(), {**POSE_CP, "pos_z": -6.3}, None)],
                                                                             [(1, "Checkpoint 1: Entrance doors.", 2, True, None), (5, "", None, False, "on_route_silent")]),
 
